@@ -9,12 +9,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Invoice represents the amount billed to a Customer for a Job.
- * One Job → One Invoice (1:1 relationship).
- *
- * Financial status is tracked independently from Job status.
- */
 @Entity
 @Table(name = "invoices")
 @Getter
@@ -28,9 +22,6 @@ public class Invoice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * 1:1 with Job — one invoice per job.
-     */
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_id", nullable = false, unique = true)
     private Job job;
@@ -39,19 +30,16 @@ public class Invoice {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
-    // Unique human-readable invoice number e.g. INV-2024-0001
     @Column(nullable = false, unique = true)
     private String invoiceNumber;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
 
-    // Tax amount (not a percentage — actual tax value)
     @Column(nullable = false, precision = 12, scale = 2)
     @Builder.Default
     private BigDecimal tax = BigDecimal.ZERO;
 
-    // totalAmount = subtotal + tax
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
@@ -63,9 +51,7 @@ public class Invoice {
     private LocalDate issuedAt;
     private LocalDate dueDate;
 
-    // Invoice file hosted on Cloudinary — secure_url for delivery, public_id for deletion
     private String fileUrl;
-
     private String filePublicId;
 
     @Column(nullable = false, updatable = false)

@@ -187,10 +187,17 @@ export function UserProfile() {
     );
   }
 
-  const isSelf = currentUser?.userId === user.id;
-  const canManage = currentUser?.role === "ADMIN";
-  const canEdit = !user.deleted && (canManage ||
-    (currentUser?.role === "TECHNICIAN" && isSelf));
+    const isSelf = currentUser?.userId === user.id;
+  const callerRole = currentUser?.role;
+  // Admin manages staff accounts freely; a Manager may edit Technician profiles
+  // (name, email, phone, specialization) — but never other staff/admin accounts.
+  // Account-management actions (activate/deactivate/delete/restore/role-change)
+  // stay ADMIN-only via `canManage`.
+  const canManage = callerRole === "ADMIN";
+  const canEditTechnician =
+    callerRole === "MANAGER" && user.role === "TECHNICIAN" && !user.deleted && !isSelf;
+  const canEdit =
+    !user.deleted && (canManage || canEditTechnician || (callerRole === "TECHNICIAN" && isSelf));
   const isTechnician =
     user.role === "TECHNICIAN" && !user.deleted &&
     (currentUser?.role !== "TECHNICIAN" || isSelf);

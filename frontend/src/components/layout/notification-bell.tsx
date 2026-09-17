@@ -91,14 +91,23 @@ export function NotificationBell() {
     const next = !open;
     setOpen(next);
     if (next) loadItems(); // fresh list on every open
-  };
+    };
 
   const handleItemClick = async (item: AppNotification) => {
     setOpen(false);
+    // Optimistically mark as read in the list view so the panel reflects state
+    // immediately — the API call is made next, and refresh() reconciles.
+    setItems((current) =>
+      current.map((i) => (i.id === item.id ? { ...i, read: true } : i))
+    );
     try {
       if (!item.read) await notificationApi.markRead(item.id);
     } catch {
-      // mark-read is best-effort — navigation should not be blocked
+      // mark-read is best-effort — navigation should not be blocked.
+      // revert optimistically-set state on failure
+      setItems((current) =>
+        current.map((i) => (i.id === item.id ? { ...i, read: false } : i))
+      );
     }
     refresh();
     const target = resolveNotificationLink(item.link, user?.role);

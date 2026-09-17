@@ -27,7 +27,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Invoice service — creates and manages invoices for closed jobs.
@@ -42,9 +41,6 @@ public class InvoiceService {
     private final PaymentRepository paymentRepository;
     private final CloudinaryService cloudinaryService;
     private final ApplicationEventPublisher eventPublisher;
-
-    // Simple in-memory sequence for invoice numbers — use DB sequence in production
-    private final AtomicLong invoiceSequence = new AtomicLong(1);
 
     @Transactional
     public InvoiceResponse createInvoice(InvoiceRequest request) {
@@ -61,12 +57,12 @@ public class InvoiceService {
 
         BigDecimal tax = request.getTax() != null ? request.getTax() : BigDecimal.ZERO;
         BigDecimal total = request.getSubtotal().add(tax);
-        String invoiceNumber = generateInvoiceNumber();
 
+        // invoiceNumber is auto-generated in Invoice.@PrePersist via the
+        // DB-managed InvoiceSequence (restart- and concurrency-safe).
         Invoice invoice = Invoice.builder()
                 .job(job)
                 .customer(job.getCustomer())
-                .invoiceNumber(invoiceNumber)
                 .subtotal(request.getSubtotal())
                 .tax(tax)
                 .totalAmount(total)
@@ -103,8 +99,7 @@ public class InvoiceService {
                     saved.getCustomer().getUser().getId(),
                     saved.getInvoiceNumber(),
                     saved.getTotalAmount(),
-                    saved.getStatus()
-            ));
+                    saved.getStatus()));
         }
         return toResponse(saved);
     }
@@ -136,7 +131,8 @@ public class InvoiceService {
 
     /**
      * Customer: list only their own invoices.
-     * customerId is derived from the authenticated user's Customer profile — never from client input.
+     * customerId is derived from the authenticated user's Customer profile — never
+     * from client input.
      */
     public Page<InvoiceResponse> getMyInvoices(Long customerId, Pageable pageable) {
         return invoiceRepository.findByCustomerId(customerId, pageable).map(this::toResponse);
@@ -169,11 +165,6 @@ public class InvoiceService {
             invoice.setStatus(InvoiceStatus.ISSUED);
         }
         invoiceRepository.save(invoice);
-    }
-
-    private String generateInvoiceNumber() {
-        int year = LocalDate.now().getYear();
-        return String.format("INV-%d-%04d", year, invoiceSequence.getAndIncrement());
     }
 
     private InvoiceResponse toResponse(Invoice invoice) {

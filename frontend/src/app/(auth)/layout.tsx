@@ -103,8 +103,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="relative mt-6 flex items-center justify-between text-xs text-slate-400">
             <span>© 2026 Opsly. All rights reserved.</span>
-            <span className="flex items-center gap-2">
-              <Image src="/op.webp" alt="Opsly logo" width={20} height={20} className="rounded-md bg-white p-0.5" />
+                        <span className="flex items-center gap-2">
+              <Image
+              src="/op.webp"
+              alt="Opsly logo"
+              width={24}
+              height={24}
+              className="rounded-2xl border-0 bg-transparent object-contain"
+            />
               Trusted by service teams
             </span>
           </div>

@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronDown, ShieldCheck } from "lucide-react";
 import { Button } from "./button";
-import { cn, initialsOf } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { avatarGradient } from "./avatar";
 
 interface EntityFormShellProps {
   icon: ReactNode;
@@ -96,8 +97,20 @@ export function EntityFormShell({
         <div className="px-4 sm:px-7">
           {avatarName && (
             <div className="flex items-center gap-3 rounded-2xl border border-emerald-100 bg-[#f2fbf5] p-3 pr-3 dark:border-emerald-500/20 dark:bg-emerald-500/10">
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-sm font-bold uppercase text-white shadow-sm">
-                {initialsOf(avatarName)}
+              <span
+                className={cn(
+                  "flex size-12 shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-gradient-to-br ring-1 ring-black/[0.04] dark:ring-white/10",
+                  avatarGradient(avatarName)
+                )}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/user-image.svg"
+                  alt=""
+                  aria-hidden
+                  draggable={false}
+                  className="pointer-events-none size-6 select-none brightness-0 invert"
+                />
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-display text-[15px] font-bold text-[#16294d] dark:text-white">

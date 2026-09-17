@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -52,8 +53,16 @@ public class NotificationService {
         notificationRepository.markAllReadByUserId(user.getId());
     }
 
-    /** Create one notification — called by the event listener, never by controllers. */
-    @Transactional
+    /**
+     * Create one notification — called by the event listener, never by controllers.
+     *
+     * REQUIRES_NEW is critical: the listener runs in the AFTER_COMMIT phase, when the
+     * business transaction has already committed but its resources are still bound to
+     * the thread. With plain REQUIRED this method would join that dead transaction and
+     * the INSERT would execute without ever being committed — notifications silently
+     * disappear for every role. A fresh transaction guarantees the row is stored.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void create(Long recipientUserId, NotificationType type, String title, String message, String link) {
         Notification notification = Notification.builder()
                 .user(userRepository.getReferenceById(recipientUserId))
