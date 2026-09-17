@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Black swirl: sharp tip top-left, thick crescent over top-right, sharp tip bottom-center -->
+  <path fill="#1b1b20" d="M 120,95
+    C 200,30 330,30 400,95
+    C 465,155 475,260 430,335
+    C 400,380 350,400 290,392
+    C 255,387 220,377 198,364
+    C 265,348 332,305 345,230
+    C 355,175 322,130 272,115
+    C 220,100 160,98 120,95 Z"/>
+  <!-- Red swirl: 180-degree counterpart, sharp tip bottom-right, thick crescent bottom-left, sharp tip top-center -->
+  <path fill="#d2202f" d="M 392,417
+    C 312,482 182,482 112,417
+    C 47,357 37,252 82,177
+    C 112,132 162,112 222,120
+    C 257,125 292,135 314,148
+    C 247,164 180,207 167,282
+    C 157,337 190,382 240,397
+    C 292,412 352,414 392,417 Z"/>
+</svg>
