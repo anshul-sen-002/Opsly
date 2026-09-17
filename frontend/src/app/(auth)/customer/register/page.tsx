@@ -63,10 +63,12 @@ export default function CustomerRegisterPage() {
         password: values.password,
         phone: values.phone || undefined,
       });
-      toast.success(
-        `Welcome, ${values.name.split(" ")[0]}!`,
-        "Your account is ready — let's get started."
-      );
+      // Store flag to show welcome toast on dashboard
+      try {
+        localStorage.setItem('opsly.showWelcomeToast', 'true');
+      } catch {
+        // storage unavailable
+      }
       router.replace("/customer/dashboard");
     } catch (error) {
       if (error instanceof ApiError) {

@@ -9,6 +9,9 @@ import { ApiError, invoiceApi, jobApi } from "@/lib/api";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import type { Invoice, Job } from "@/types";
 import type { LucideIcon } from "lucide-react";
+import { useToast } from "@/components/providers/toast-provider";
+import { useAuth } from "@/components/providers/auth-provider";
+import { displayNameFromEmail } from "@/lib/utils";
 
 function StatCard({
   icon: Icon,
@@ -39,6 +42,24 @@ function CustomerDashboardContent() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
+  const { user } = useAuth();
+
+  // Show welcome toast on fresh login
+  useEffect(() => {
+    try {
+      const showToast = localStorage.getItem('opsly.showWelcomeToast');
+      if (showToast === 'true' && user) {
+        localStorage.removeItem('opsly.showWelcomeToast');
+        toast.success(
+          `Welcome, ${displayNameFromEmail(user.email)}!`,
+          "Signed in successfully — glad to have you back."
+        );
+      }
+    } catch {
+      // storage unavailable
+    }
+  }, [toast, user]);
 
   const load = useCallback(async () => {
     setLoading(true);

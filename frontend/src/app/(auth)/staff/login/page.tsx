@@ -52,10 +52,12 @@ export default function StaffLoginPage() {
     setFormError(null);
     try {
       await loginStaff(values.email, values.password);
-      toast.success(
-        `Welcome, ${displayNameFromEmail(values.email)}!`,
-        "Signed in successfully — glad to have you back."
-      );
+      // Store flag to show welcome toast on dashboard
+      try {
+        localStorage.setItem('opsly.showWelcomeToast', 'true');
+      } catch {
+        // storage unavailable
+      }
       router.replace("/dashboard");
     } catch (error) {
       if (error instanceof ApiError) {

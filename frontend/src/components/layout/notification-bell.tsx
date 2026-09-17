@@ -59,6 +59,7 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const loadItems = useCallback(() => {
@@ -68,6 +69,16 @@ export function NotificationBell() {
       .then((page) => setItems(page.content))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
+  }, []);
+
+  // Detect mobile viewport and adjust dropdown positioning
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Close on outside click / Escape
@@ -94,7 +105,6 @@ export function NotificationBell() {
     };
 
   const handleItemClick = async (item: AppNotification) => {
-    setOpen(false);
     // Optimistically mark as read in the list view so the panel reflects state
     // immediately — the API call is made next, and refresh() reconciles.
     setItems((current) =>
@@ -110,6 +120,8 @@ export function NotificationBell() {
       );
     }
     refresh();
+    // Close dropdown after API call completes and state is updated
+    setOpen(false);
     const target = resolveNotificationLink(item.link, user?.role);
     if (target) router.push(target);
   };
@@ -149,7 +161,12 @@ export function NotificationBell() {
         <div
           role="dialog"
           aria-label="Notifications panel"
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(92vw,360px)] animate-pop-in overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 ring-1 ring-slate-900/[0.03] dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40 dark:ring-white/[0.04]"
+          className={cn(
+            "absolute z-50 w-[min(92vw,360px)] max-h-[85vh] animate-pop-in overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 ring-1 ring-slate-900/[0.03] dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40 dark:ring-white/[0.04]",
+            isMobile
+              ? "right-4 top-[calc(100%+8px)]"
+              : "right-0 top-[calc(100%+8px)]"
+          )}
         >
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
             <div className="flex items-center gap-2">
@@ -172,7 +189,7 @@ export function NotificationBell() {
             )}
           </div>
 
-          <div className="max-h-[360px] overflow-y-auto">
+          <div className="max-h-[calc(85vh-120px)] overflow-y-auto">
             {loading ? (
               <div className="space-y-3 px-4 py-6">
                 {[0, 1, 2].map((i) => (

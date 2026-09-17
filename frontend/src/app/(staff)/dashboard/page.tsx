@@ -22,6 +22,9 @@ import { cn } from "@/lib/utils";
 
 import type { DashboardSummary } from "@/types";
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/providers/toast-provider";
+import { useAuth } from "@/components/providers/auth-provider";
+import { displayNameFromEmail } from "@/lib/utils";
 
 const RANGES = [7, 14, 30] as const;
 
@@ -51,6 +54,24 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
+  const { user } = useAuth();
+
+  // Show welcome toast on fresh login
+  useEffect(() => {
+    try {
+      const showToast = localStorage.getItem('opsly.showWelcomeToast');
+      if (showToast === 'true' && user) {
+        localStorage.removeItem('opsly.showWelcomeToast');
+        toast.success(
+          `Welcome, ${displayNameFromEmail(user.email)}!`,
+          "Signed in successfully — glad to have you back."
+        );
+      }
+    } catch {
+      // storage unavailable
+    }
+  }, [toast, user]);
 
   const load = useCallback(async (range: number) => {
     setLoading(true);

@@ -283,18 +283,20 @@ export function UsersList() {
       )}
       
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
-          <FilterTabs<RoleChip>
-            value={roleChip}
-            options={chipOptions}
-            onChange={(value) => {
-              setRoleChip(value);
-              setPage(0);
-            }}
-          />
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
+          <div className="flex flex-wrap items-center gap-2 overflow-x-auto scrollbar-hide pb-2 sm:pb-0">
+            <FilterTabs<RoleChip>
+              value={roleChip}
+              options={chipOptions}
+              onChange={(value) => {
+                setRoleChip(value);
+                setPage(0);
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-2 sm:justify-end">
             <div className="relative" ref={filtersRef}>
-              <Button variant="outline" icon={<SlidersHorizontal className="size-4" />} onClick={() => setFiltersOpen((open) => !open)}>
+              <Button variant="outline" icon={<SlidersHorizontal className="size-4" />} onClick={() => setFiltersOpen((open) => !open)} className="shrink-0 sm:justify-center">
                 Filters
                 {activeFilterCount > 0 && (
                   <span className="ml-1 flex size-4 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-semibold text-white">
@@ -303,7 +305,7 @@ export function UsersList() {
                 )}
               </Button>
               {filtersOpen && (
-                <div className="absolute right-0 top-11 z-30 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-xl animate-pop-in dark:border-slate-700 dark:bg-slate-900">
+                <div className="absolute right-0 top-11 z-30 w-[min(92vw,320px)] max-h-[80vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-xl animate-pop-in dark:border-slate-700 dark:bg-slate-900 sm:left-auto sm:right-0">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Search</label>
                   <div className="relative mt-1.5">
                     <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-slate-400" />

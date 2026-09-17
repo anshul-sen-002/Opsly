@@ -49,10 +49,12 @@ export default function CustomerLoginPage() {
     setFormError(null);
     try {
       await loginCustomer(values.email, values.password);
-      toast.success(
-        `Welcome, ${displayNameFromEmail(values.email)}!`,
-        "Signed in successfully — glad to have you back."
-      );
+      // Store flag to show welcome toast on dashboard
+      try {
+        localStorage.setItem('opsly.showWelcomeToast', 'true');
+      } catch {
+        // storage unavailable
+      }
       router.replace("/customer/dashboard");
     } catch (error) {
       if (error instanceof ApiError) {

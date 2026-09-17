@@ -157,11 +157,12 @@ function JobsPageContent() {
       />
 
       {!isTechnician && (
-        <div className="max-w-xs">
+        <div className="w-full overflow-hidden sm:w-auto sm:max-w-xs">
           <Select
             label="Filter by status"
             value={status}
             onChange={(event) => setStatus(event.target.value)}
+            className="w-full sm:w-auto"
           >
             <option value={ALL}>All statuses</option>
             {STATUS_OPTIONS.map((option) => (
