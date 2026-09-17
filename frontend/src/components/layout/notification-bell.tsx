@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "@/components/providers/auth-provider";
 import { useNotifications } from "@/components/providers/notification-provider";
 import { EmptyState } from "@/components/ui/states";
 import { notificationApi } from "@/lib/api";
@@ -21,6 +22,7 @@ import type { AppNotification, NotificationType } from "@/types";
 const PAGE_SIZE = 15;
 
 const TYPE_META: Record<NotificationType, { icon: typeof Wrench; tone: string }> = {
+  JOB_CREATED: { icon: CalendarPlus, tone: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" },
   JOB_ASSIGNED: { icon: Wrench, tone: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400" },
   JOB_STARTED: { icon: ClipboardList, tone: "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400" },
   JOB_COMPLETED: { icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" },
@@ -30,9 +32,28 @@ const TYPE_META: Record<NotificationType, { icon: typeof Wrench; tone: string }>
   CUSTOMER_REGISTERED: { icon: CalendarPlus, tone: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" },
 };
 
+const CUSTOMER_JOB_LINK = "/customer/requests";
+const CUSTOMER_INVOICE_LINK = "/customer/invoices";
+
+/**
+ * Backend links are staff-oriented (e.g. "/jobs/5", "/customer/invoices").
+ * Customers have their own portal routes, so remap job/invoice links for them —
+ * otherwise a customer tapping a notification lands on a staff page / 404.
+ */
+function resolveNotificationLink(link: string | null, role?: string): string | null {
+  if (!link) return null;
+  if (role !== "CUSTOMER") return link;
+  if (link.startsWith("/jobs")) return CUSTOMER_JOB_LINK;
+  if (link.startsWith("/invoices")) return CUSTOMER_INVOICE_LINK;
+  if (link.startsWith("/payments")) return "/customer/payments";
+  if (link.startsWith("/customers")) return "/customer/profile";
+  return link;
+}
+
 /** Bell button + dropdown panel — live unread badge, mark-read, deep links */
 export function NotificationBell() {
   const { unreadCount, refresh } = useNotifications();
+  const { user } = useAuth();
   const router = useRouter();
 
   const [open, setOpen] = useState(false);
@@ -80,7 +101,8 @@ export function NotificationBell() {
       // mark-read is best-effort — navigation should not be blocked
     }
     refresh();
-    if (item.link) router.push(item.link);
+    const target = resolveNotificationLink(item.link, user?.role);
+    if (target) router.push(target);
   };
 
   const handleMarkAllRead = async () => {
@@ -163,7 +185,10 @@ export function NotificationBell() {
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-slate-800">
                 {items.map((item) => {
-                  const meta = TYPE_META[item.type];
+                  const meta = TYPE_META[item.type] ?? {
+                    icon: Bell,
+                    tone: "bg-slate-100 text-slate-500 dark:bg-slate-500/10 dark:text-slate-400",
+                  };
                   const Icon = meta.icon;
                   return (
                     <li key={item.id}>

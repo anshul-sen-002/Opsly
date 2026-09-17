@@ -11,6 +11,7 @@ import { EntityFormShell } from "@/components/ui/entity-form";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ApiError, customerApi, jobApi } from "@/lib/api";
+import { signalNotificationsChanged } from "@/lib/utils";
 import type { Customer, CreateJobInput } from "@/types";
 
 const jobSchema = z.object({
@@ -69,6 +70,7 @@ export default function NewJobPage() {
     try {
       const saved = await jobApi.create(input);
       toast.success("Job created", `Job #${saved.id} logged for ${saved.customerName}.`);
+      signalNotificationsChanged();
       router.push("/jobs");
     } catch (error) {
       if (error instanceof ApiError && error.fieldErrors) {

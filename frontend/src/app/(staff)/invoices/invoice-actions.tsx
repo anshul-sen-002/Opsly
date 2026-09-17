@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { useToast } from "@/components/providers/toast-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiError, invoiceApi } from "@/lib/api";
+import { signalNotificationsChanged } from "@/lib/utils";
 import type { Invoice } from "@/types";
 
 /** Invoice card shown inside the dialogs */
@@ -31,6 +32,7 @@ export function useInvoiceActions(onUpdated: () => void | Promise<unknown>) {
           `Invoice ${updated.invoiceNumber} issued`,
           "The invoice is now payable and payments can be recorded."
         );
+        signalNotificationsChanged();
         await onUpdated();
       } catch (err) {
         toast.error("Could not issue invoice", err instanceof ApiError ? err.message : "Unexpected error");

@@ -8,7 +8,6 @@ import {
   Moon,
   Pencil,
   Search,
-  Shield,
   Sun,
   User,
   Users,
@@ -16,12 +15,11 @@ import {
   X,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
-import { NotificationBell } from "@/components/providers/notification-bell";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { RoleBadge } from "@/components/ui/badge";
 import { THEME_STORAGE_KEY } from "@/lib/constants";
-import { staffApi, ApiError } from "@/lib/api";
 import { displayNameFromEmail, initialsOf } from "@/lib/utils";
 
 interface TopbarProps {
@@ -150,11 +148,6 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     }
   };
 
-  const handleChangeRole = () => {
-    setMenuOpen(false);
-    router.push("/admin/change-role");
-  };
-
   const handleSignOut = async () => {
     setMenuOpen(false);
     await logout();
@@ -262,16 +255,6 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                   <Pencil className="size-4" />
                   Edit Profile
                 </button>
-                {user?.role === "ADMIN" && (
-                <button
-                  type="button"
-                  onClick={handleChangeRole}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-300 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
-                >
-                  <Shield className="size-4" />
-                  Change Role
-                </button>
-                )}
                 <button
                   type="button"
                   onClick={handleSignOut}

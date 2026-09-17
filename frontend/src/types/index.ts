@@ -176,6 +176,7 @@ export interface ChatResponse {
 /** GET /api/customers list item */
 /** Notification type — mirrors backend NotificationType enum */
 export type NotificationType =
+  | "JOB_CREATED"
   | "JOB_ASSIGNED"
   | "JOB_STARTED"
   | "JOB_COMPLETED"

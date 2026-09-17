@@ -99,6 +99,25 @@ export function formatCompact(value: number): string {
   return new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
+/**
+ * Nudge every open bell (this tab + other tabs) to re-poll immediately.
+ * Call this after any mutation that fires a backend notification
+ * (job create/assign/start/complete/close, payment, registration, invoice)
+ * so OTHER roles see it without waiting for the next poll tick.
+ */
+export function signalNotificationsChanged(): void {
+  try {
+    localStorage.setItem("opsly.notifications.refresh", String(Date.now()));
+  } catch {
+    // storage unavailable — polling still picks it up
+  }
+  try {
+    window.dispatchEvent(new Event("opsly:notifications-refresh"));
+  } catch {
+    // non-DOM environment — ignore
+  }
+}
+
 /** Relative time for notifications — "just now", "5m ago", "2h ago", "3d ago", then a date */
 export function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);

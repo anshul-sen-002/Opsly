@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ApiError, jobApi } from "@/lib/api";
 import type { CreateJobInput, Job } from "@/types";
+import { signalNotificationsChanged } from "@/lib/utils";
 
 const requestSchema = z.object({
   description: z.string().min(5, "Describe the work in at least 5 characters"),
@@ -47,6 +48,7 @@ export default function NewRequestPage() {
       const saved = await jobApi.create(input);
       setSavedJob(saved);
       toast.success("Request raised", `Job #${saved.id} created successfully.`);
+      signalNotificationsChanged();
     } catch (error) {
       if (error instanceof ApiError && error.fieldErrors) {
         for (const [field, message] of Object.entries(error.fieldErrors)) {

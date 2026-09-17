@@ -35,6 +35,7 @@ type RegisterForm = z.infer<typeof registerSchema>;
 export default function CustomerRegisterPage() {
   const { registerCustomer } = useAuth();
   const router = useRouter();
+  const toast = useToast();
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
@@ -62,6 +63,10 @@ export default function CustomerRegisterPage() {
         password: values.password,
         phone: values.phone || undefined,
       });
+      toast.success(
+        `Welcome, ${values.name.split(" ")[0]}!`,
+        "Your account is ready — let's get started."
+      );
       router.replace("/customer/dashboard");
     } catch (error) {
       if (error instanceof ApiError) {

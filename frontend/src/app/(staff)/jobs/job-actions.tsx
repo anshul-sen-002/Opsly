@@ -3,11 +3,13 @@
 import { CheckCircle2, Lock, PlayCircle, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/providers/toast-provider";
+import { useNotifications } from "@/components/providers/notification-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EntityModal } from "@/components/ui/entity-modal";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/states";
 import { ApiError, jobApi, technicianApi } from "@/lib/api";
+import { signalNotificationsChanged } from "@/lib/utils";
 import type { Job, Technician } from "@/types";
 
 type JobTransitionAction = "start" | "complete" | "close";
@@ -66,6 +68,7 @@ export function jobDialogUser(job: Job) {
  */
 export function useJobActions(onUpdated: () => void | Promise<unknown>) {
   const toast = useToast();
+  const { refresh: refreshNotifications } = useNotifications();
   const [pending, setPending] = useState<TransitionState | null>(null);
   const [assignJob, setAssignJob] = useState<Job | null>(null);
 
@@ -83,13 +86,17 @@ export function useJobActions(onUpdated: () => void | Promise<unknown>) {
           `Job #${updated.id} updated`,
           `Status is now ${updated.status.replace(/_/g, " ")}.`
         );
+        // Status change fires a backend notification (after commit) —
+        // refresh the bell so OTHER roles see it without waiting 45s
+        refreshNotifications();
+        signalNotificationsChanged();
         await onUpdated();
       } catch (err) {
         toast.error("Action failed", err instanceof ApiError ? err.message : "Unexpected error");
         throw err;
       }
     },
-    [onUpdated, toast]
+    [onUpdated, toast, refreshNotifications]
   );
 
   const request = useCallback(
@@ -183,6 +190,7 @@ function AssignTechnicianModal({
         "Technician assigned",
         `Job #${updated.id} assigned to ${updated.technicianName ?? "technician"}.`
       );
+      signalNotificationsChanged();
       await onAssigned();
       onClose();
     } catch (err) {

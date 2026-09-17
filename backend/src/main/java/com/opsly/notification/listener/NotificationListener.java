@@ -48,6 +48,12 @@ public class NotificationListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onJobStatus(JobStatusEvent event) {
+        // ASSIGNED is announced by onJobAssigned (technician only) — skipping it
+        // here avoids a double notification for the technician on every assign.
+        if (event.newStatus() == com.opsly.job.entity.JobStatus.ASSIGNED
+                || event.newStatus() == com.opsly.job.entity.JobStatus.PENDING) {
+            return;
+        }
         List<Long> recipientIds = new ArrayList<>(findStaffRecipientIds());
         if (event.customerUserId() != null && !recipientIds.contains(event.customerUserId())) {
             recipientIds.add(event.customerUserId());

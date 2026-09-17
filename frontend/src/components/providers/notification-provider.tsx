@@ -1,11 +1,11 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { notificationApi } from "@/lib/api";
 import { useAuth } from "./auth-provider";
 
 /** How often the bell badge polls the backend for unread notifications */
-const POLL_INTERVAL_MS = 45_000;
+const POLL_INTERVAL_MS = 15_000;
 
 interface NotificationContextValue {
   unreadCount: number;
@@ -22,7 +22,6 @@ const NotificationContext = createContext<NotificationContextValue | null>(null)
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { status } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
-  const timerRef = useRef<number | null>(null);
 
   const refresh = useCallback(() => {
     if (status !== "authenticated") return;
@@ -40,12 +39,25 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       return;
     }
     refresh();
-    timerRef.current = window.setInterval(refresh, POLL_INTERVAL_MS);
+    const timer = window.setInterval(refresh, POLL_INTERVAL_MS);
+    // Bell updates when the tab regains focus (e.g. admin returns after the
+    // technician completed a job in another session) and when another tab
+    // in the same browser changed notifications.
     const onFocus = () => refresh();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "opsly.notifications.refresh") refresh();
+    };
     window.addEventListener("focus", onFocus);
+    window.addEventListener("storage", onStorage);
+    // Same-tab signal: job/payment/customer actions bump localStorage so all
+    // open provider instances (staff + customer tabs) refresh immediately.
+    const onLocalRefresh = () => refresh();
+    window.addEventListener("opsly:notifications-refresh", onLocalRefresh);
     return () => {
-      if (timerRef.current !== null) window.clearInterval(timerRef.current);
+      window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("opsly:notifications-refresh", onLocalRefresh);
     };
   }, [status, refresh]);
 

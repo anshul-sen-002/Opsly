@@ -11,6 +11,8 @@ import { AuthFormHeader } from "@/components/auth-form";
 import { Button } from "@/components/ui/button";
 import { Input, PasswordInput } from "@/components/ui/input";
 import { ApiError } from "@/lib/api";
+import { useToast } from "@/components/providers/toast-provider";
+import { displayNameFromEmail } from "@/lib/utils";
 import { Mail } from "lucide-react";
 
 const loginSchema = z.object({
@@ -26,6 +28,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function CustomerLoginPage() {
   const { status, loginCustomer } = useAuth();
   const router = useRouter();
+  const toast = useToast();
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
@@ -46,6 +49,10 @@ export default function CustomerLoginPage() {
     setFormError(null);
     try {
       await loginCustomer(values.email, values.password);
+      toast.success(
+        `Welcome, ${displayNameFromEmail(values.email)}!`,
+        "Signed in successfully — glad to have you back."
+      );
       router.replace("/customer/dashboard");
     } catch (error) {
       if (error instanceof ApiError) {

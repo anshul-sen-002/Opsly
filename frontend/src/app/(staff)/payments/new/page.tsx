@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ErrorState, PageLoader } from "@/components/ui/states";
 import { ApiError, invoiceApi, paymentApi } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, signalNotificationsChanged } from "@/lib/utils";
 import type { Invoice } from "@/types";
 
 const paymentSchema = z.object({
@@ -93,6 +93,7 @@ function NewPaymentPageContent() {
         "Payment recorded",
         `${formatCurrency(created.amount)} recorded against ${created.invoiceNumber}.`
       );
+      signalNotificationsChanged();
       router.push("/payments");
     } catch (error) {
       if (error instanceof ApiError && error.fieldErrors) {
