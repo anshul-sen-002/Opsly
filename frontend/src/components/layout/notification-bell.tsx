@@ -9,6 +9,7 @@ import {
   FileText,
   ReceiptIndianRupee,
   Wrench,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -59,7 +60,6 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const loadItems = useCallback(() => {
@@ -69,16 +69,6 @@ export function NotificationBell() {
       .then((page) => setItems(page.content))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, []);
-
-  // Detect mobile viewport and adjust dropdown positioning
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Close on outside click / Escape
@@ -139,11 +129,14 @@ export function NotificationBell() {
   const unreadInView = items.filter((item) => !item.read).length;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="static sm:relative">
       <button
         type="button"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
         onClick={toggle}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        aria-controls="notifications-panel"
         className={cn(
           "relative flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 active:scale-95 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200",
           open && "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
@@ -159,16 +152,12 @@ export function NotificationBell() {
 
       {open && (
         <div
+          id="notifications-panel"
           role="dialog"
           aria-label="Notifications panel"
-          className={cn(
-            "absolute z-50 w-[min(92vw,360px)] max-h-[85vh] animate-pop-in overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 ring-1 ring-slate-900/[0.03] dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40 dark:ring-white/[0.04]",
-            isMobile
-              ? "right-4 top-[calc(100%+8px)]"
-              : "right-0 top-[calc(100%+8px)]"
-          )}
+          className="absolute inset-x-3 top-[calc(100%+8px)] z-50 flex max-h-[calc(100dvh-5.5rem)] flex-col animate-pop-in overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5 ring-1 ring-slate-900/[0.03] sm:left-auto sm:right-0 sm:w-[min(360px,calc(100vw-2rem))] dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/40 dark:ring-white/[0.04]"
         >
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-slate-900 dark:text-white">Notifications</p>
               {unreadInView > 0 && (
@@ -177,19 +166,29 @@ export function NotificationBell() {
                 </span>
               )}
             </div>
-            {unreadInView > 0 && (
+            <div className="ml-auto flex items-center gap-2">
+              {unreadInView > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void handleMarkAllRead()}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  <CheckCheck className="size-3.5" />
+                  Mark all read
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => void handleMarkAllRead()}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                aria-label="Close notifications"
+                onClick={() => setOpen(false)}
+                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
               >
-                <CheckCheck className="size-3.5" />
-                Mark all read
+                <X className="size-4" />
               </button>
-            )}
+            </div>
           </div>
 
-          <div className="max-h-[calc(85vh-120px)] overflow-y-auto">
+          <div className="min-h-0 overflow-y-auto overscroll-contain">
             {loading ? (
               <div className="space-y-3 px-4 py-6">
                 {[0, 1, 2].map((i) => (

@@ -182,13 +182,20 @@ export function UsersList() {
     void load();
   }, [load]);
 
-  // Close the Filters popover on outside click
+  // Close the Filters popover on outside click or Escape
   useEffect(() => {
     const onClickAway = (event: MouseEvent) => {
       if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) setFiltersOpen(false);
     };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setFiltersOpen(false);
+    };
     document.addEventListener("mousedown", onClickAway);
-    return () => document.removeEventListener("mousedown", onClickAway);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onClickAway);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const counts = useMemo(
@@ -282,9 +289,9 @@ export function UsersList() {
         <StatCards items={stats} />
       )}
       
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
-          <div className="flex flex-wrap items-center gap-2 overflow-x-auto scrollbar-hide pb-2 sm:pb-0">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div className="min-w-0 overflow-x-auto pb-2 scrollbar-hide sm:pb-0">
             <FilterTabs<RoleChip>
               value={roleChip}
               options={chipOptions}
@@ -294,9 +301,9 @@ export function UsersList() {
               }}
             />
           </div>
-          <div className="flex items-center gap-2 sm:justify-end">
-            <div className="relative" ref={filtersRef}>
-              <Button variant="outline" icon={<SlidersHorizontal className="size-4" />} onClick={() => setFiltersOpen((open) => !open)} className="shrink-0 sm:justify-center">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap sm:justify-end">
+            <div className="contents sm:relative sm:block" ref={filtersRef}>
+              <Button variant="outline" icon={<SlidersHorizontal className="size-4" />} onClick={() => setFiltersOpen((open) => !open)} aria-expanded={filtersOpen} aria-controls="user-filters" className="shrink-0 sm:justify-center">
                 Filters
                 {activeFilterCount > 0 && (
                   <span className="ml-1 flex size-4 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-semibold text-white">
@@ -305,7 +312,7 @@ export function UsersList() {
                 )}
               </Button>
               {filtersOpen && (
-                <div className="absolute right-0 top-11 z-30 w-[min(92vw,320px)] max-h-[80vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-xl animate-pop-in dark:border-slate-700 dark:bg-slate-900 sm:left-auto sm:right-0">
+                <div id="user-filters" role="region" aria-label="User filters" className="order-last w-full min-w-0 rounded-xl border border-slate-200 bg-white p-4 animate-pop-in dark:border-slate-700 dark:bg-slate-900 sm:absolute sm:right-0 sm:top-11 sm:z-30 sm:max-h-[70dvh] sm:w-80 sm:overflow-y-auto sm:overscroll-contain sm:shadow-xl">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Search</label>
                   <div className="relative mt-1.5">
                     <Search className="pointer-events-none absolute inset-y-0 left-3 my-auto size-4 text-slate-400" />
