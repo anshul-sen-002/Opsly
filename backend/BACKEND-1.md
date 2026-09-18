@@ -1,7 +1,7 @@
 # BACKEND.md — Opsly backend
 
 **What this document is:** a map of the Spring Boot service — which package does what, which rules
-each service protects, which endpoints exist, and how the AI agent talks to Amazon Bedrock.
+each service protects, which endpoints exist, and how the AI agent talks to its Ollama server.
 It assumes you have read [`../AGENTS.md`](../AGENTS.md) first.
 
 **Golden rule of this codebase:** the backend is the single source of truth. Permissions, ownership
@@ -22,7 +22,7 @@ AI model.
 | Understand a business rule (jobs, invoices, payments) | [6. Business rules](#6-business-rules-owned-by-the-services) |
 | Understand the notifications | [7. Notifications](#7-notifications) |
 | Understand the AI agent loop | [8. AI agent internals](#8-ai-agent-internals) |
-| Configure Amazon Bedrock | [9. AI provider: Amazon Bedrock](#9-ai-provider-amazon-bedrock) |
+| Configure the AI provider | [9. AI provider: Ollama](#9-ai-provider-ollama) |
 | Build, run or add a feature | [10. Build, run, test](#10-build-run-test), [11. Checklists](#11-checklists-for-common-changes) |
 
 ---
@@ -33,7 +33,7 @@ AI model.
 - **Shape:** 11 feature packages, each split into `controller → service → repository → entity/dto`.
 - **Security:** JWT access token + refresh token in an HttpOnly cookie; roles checked twice —
   `@PreAuthorize` on the endpoint and `allowedRoles` inside the AI tool registry.
-- **AI:** `POST /api/ai/chat` runs an agent loop (max 8 rounds) against **Amazon Bedrock**; the model
+- **AI:** `POST /api/ai/chat` runs an agent loop (max 8 rounds) against a self-hosted **Ollama** model;
   can request tools, and every tool is authorized before it runs.
 - **Run:** `mvn spring-boot:run` → `http://localhost:8080`, Swagger at `/swagger-ui.html`.
 
@@ -49,7 +49,7 @@ AI model.
 - [6. Business rules owned by the services](#6-business-rules-owned-by-the-services)
 - [7. Notifications](#7-notifications)
 - [8. AI agent internals](#8-ai-agent-internals)
-- [9. AI provider: Amazon Bedrock](#9-ai-provider-amazon-bedrock)
+- [9. AI provider: Ollama](#9-ai-provider-ollama)
 - [10. Build, run, test](#10-build-run-test)
 - [11. Checklists for common changes](#11-checklists-for-common-changes)
 
@@ -124,12 +124,10 @@ app.admin.password=${INITIAL_ADMIN_PASSWORD}
 app.cors.allowed-origins=${ALLOWED_ORIGINS}
 app.cookie.secure=false
 app.cookie.same-site=Lax
-app.ai.bedrock.api-key=${AWS_BEDROCK_API_KEY:}
-app.ai.bedrock.region=${AWS_REGION:us-east-1}
-app.ai.bedrock.model-id=${BEDROCK_MODEL_ID}
-app.ai.bedrock.endpoint=https://bedrock-runtime.${app.ai.bedrock.region}.amazonaws.com
-app.ai.bedrock.max-tokens=1024
-app.ai.bedrock.temperature=0.3
+app.ai.ollama.base-url=${OLLAMA_BASE_URL:http://localhost:11434}
+app.ai.ollama.model=${OLLAMA_MODEL:}
+app.ai.ollama.max-tokens=1024
+app.ai.ollama.temperature=0.3
 springdoc.swagger-ui.path=${SWAGGER_UI_PATH}
 springdoc.api-docs.path=${SWAGGER_DOCS_PATH}
 app.cloudinary.cloud-name=${CLOUDINARY_CLOUD_NAME:}
@@ -148,8 +146,8 @@ app.jwt.secret=<at-least-32-characters>
 app.admin.email=<first-admin-email>
 app.admin.password=<first-admin-password>
 app.cors.allowed-origins=http://localhost:3000
-app.ai.bedrock.api-key=<bedrock-api-key>
-app.ai.bedrock.model-id=amazon.nova-lite-v1:0
+app.ai.ollama.base-url=http://<ec2-ip>:11434
+app.ai.ollama.model=qwen2.5:0.5b
 app.cloudinary.cloud-name=<cloud-name>
 app.cloudinary.api-key=<api-key>
 app.cloudinary.api-secret=<api-secret>
@@ -164,7 +162,7 @@ app.cloudinary.api-secret=<api-secret>
 | `JWT_EXPIRATION` / `JWT_REFRESH_EXPIRATION` | token lifetimes in ms (900000 / 604800000) |
 | `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` | bootstrap admin |
 | `ALLOWED_ORIGINS` | CORS origins, comma-separated |
-| `AWS_BEDROCK_API_KEY` / `AWS_REGION` / `BEDROCK_MODEL_ID` | the AI provider (see §8) |
+| `OLLAMA_BASE_URL` / `OLLAMA_MODEL` | the AI provider (see §9) |
 | `SWAGGER_UI_PATH` / `SWAGGER_DOCS_PATH` | Swagger paths |
 | `CLOUDINARY_*` | file uploads |
 
@@ -447,103 +445,122 @@ Effective surface: **ADMIN 20**, **MANAGER 17**, **TECHNICIAN 4**, **CUSTOMER 3*
 
 ---
 
-# 9. AI provider: Amazon Bedrock
+# 9. AI provider: Ollama
 
-**In one line:** the agent talks to **Amazon Bedrock** using a **Bedrock API key** (sent as a bearer
-token) and one **foundation model**. OpenRouter is not used.
+**In one line:** the agent talks to a self-hosted **Ollama** server (for example on an EC2 instance) over
+plain HTTP, through its **OpenAI-compatible** chat API and one model. No API key and no AWS service involved.
 
 ## Configuration
 
 | Environment variable | Property | Meaning |
 |----------------------|----------|---------|
-| `AWS_BEDROCK_API_KEY` | `app.ai.bedrock.api-key` | the Bedrock API key, sent as `Authorization: Bearer <key>` |
-| `AWS_REGION` | `app.ai.bedrock.region` | region that hosts the model, e.g. `us-east-1` |
-| `BEDROCK_MODEL_ID` | `app.ai.bedrock.model-id` | the foundation model id, e.g. `amazon.nova-lite-v1:0` or `anthropic.claude-3-5-sonnet-20240620-v1:0` |
+| `OLLAMA_BASE_URL` | `app.ai.ollama.base-url` | the Ollama server, e.g. `http://54.161.15.10:11434` (trailing slashes are stripped) |
+| `OLLAMA_MODEL` | `app.ai.ollama.model` | the model to run, e.g. `qwen2.5:0.5b` — must be pulled on the server and support tools |
 
 ```properties
-# ========== AI / Amazon Bedrock ==========
-app.ai.bedrock.api-key=${AWS_BEDROCK_API_KEY:}
-app.ai.bedrock.region=${AWS_REGION:us-east-1}
-app.ai.bedrock.model-id=${BEDROCK_MODEL_ID}
-app.ai.bedrock.endpoint=https://bedrock-runtime.${app.ai.bedrock.region}.amazonaws.com
-app.ai.bedrock.max-tokens=1024
-app.ai.bedrock.temperature=0.3
+# ========== AI / Ollama ==========
+app.ai.ollama.base-url=${OLLAMA_BASE_URL:http://localhost:11434}
+app.ai.ollama.model=${OLLAMA_MODEL:}
+app.ai.ollama.max-tokens=1024
+app.ai.ollama.temperature=0.3
 ```
 
-`AiConfig` builds one `RestClient` bean (`bedrockClient`) that already carries the endpoint, the bearer
-header and `Content-Type: application/json`. It also exposes `isConfigured()`: when the key is blank,
-`POST /api/ai/chat` answers "AI assistant is not configured. Please set AWS_BEDROCK_API_KEY." instead of
-failing.
+`AiConfig` builds one `RestClient` bean (`ollamaClient`) that carries the base URL and
+`Content-Type: application/json`; trailing slashes in the URL are stripped. It also exposes
+`isConfigured()`: when the model is blank, `POST /api/ai/chat` answers "AI assistant is not configured.
+Please set OLLAMA_BASE_URL and OLLAMA_MODEL." instead of failing.
 
-## Request — Bedrock Converse API
+**Server-side prerequisites** (outside the app): the Ollama server must accept connections beyond
+localhost (`OLLAMA_HOST=0.0.0.0`) and its port must be reachable from the backend (EC2 security group).
+The chosen model must be pulled (`ollama pull qwen2.5:0.5b`) and support tool calling — `GET /api/tags`
+reports that under `capabilities`.
+
+**Failures are never hidden.** An error from the AI server is logged
+(`Ollama chat call failed: status=… reason=…`) and returned in the chat message itself —
+`AI service error (404): model 'qwen2.5:0.5b' not found` — instead of a generic "Failed to reach the AI
+service". Ollama reports its reason under `error`, either as a plain string (native API) or as an object
+carrying `message` (OpenAI-compatible); both are read, so a wrong URL, an unpulled model or a model without
+tool support is visible without reading the server log.
+
+## Request — Ollama OpenAI-compatible API
 
 ```
-POST {app.ai.bedrock.endpoint}/model/{modelId}/converse
+POST {app.ai.ollama.base-url}/v1/chat/completions
 ```
 
 ```json
 {
-  "system": [{ "text": "You are Opsly AI ... User: x@y.com | Role: MANAGER | Date: 2026-09-17" }],
-  "messages": [{ "role": "user", "content": [{ "text": "How many jobs are pending?" }] }],
-  "toolConfig": {
-    "tools": [{
-      "toolSpec": {
-        "name": "list_jobs",
-        "description": "List jobs, optionally filtered by status",
-        "inputSchema": { "json": { "type": "object", "properties": {}, "required": [] } }
-      }
-    }],
-    "toolChoice": { "auto": {} }
-  },
-  "inferenceConfig": { "maxTokens": 1024, "temperature": 0.3 }
+  "model": "qwen2.5:0.5b",
+  "messages": [
+    { "role": "system", "content": "You are Opsly AI ... User: x@y.com | Role: MANAGER | Date: 2026-09-18" },
+    { "role": "user", "content": "How many jobs are pending?" }
+  ],
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "list_jobs",
+      "description": "List jobs, optionally filtered by status",
+      "parameters": { "type": "object", "properties": {}, "required": [] }
+    }
+  }],
+  "tool_choice": "auto",
+  "stream": false,
+  "max_tokens": 1024,
+  "temperature": 0.3
 }
 ```
 
-`toolSpec.inputSchema.json` is exactly the JSON Schema the `ToolRegistry` already produces, so **no tool
-definition has to change**. The Converse API is model-agnostic: the same body works for Amazon Nova,
-Anthropic Claude and other Bedrock models that support tool use.
+The `tools` array is exactly what `ToolRegistry.getDefinitions()` already publishes, so the agent sends it
+straight through — there is no provider-specific conversion left. Any Ollama model with tool support
+(qwen2.5, llama3.1, mistral …) works unchanged.
 
 ## Response and how it maps to the loop
 
 ```json
 {
-  "output": {
+  "choices": [{
+    "index": 0,
     "message": {
       "role": "assistant",
-      "content": [
-        { "text": "There are 4 pending jobs." },
-        { "toolUse": { "toolUseId": "tooluse_abc", "name": "list_jobs", "input": { "status": "PENDING" } } }
-      ]
-    }
-  },
-  "stopReason": "tool_use"
+      "content": "",
+      "tool_calls": [{
+        "id": "call_f1a2icgx",
+        "type": "function",
+        "function": { "name": "list_jobs", "arguments": "{\"status\":\"PENDING\"}" }
+      }]
+    },
+    "finish_reason": "tool_calls"
+  }]
 }
 ```
 
-| What the agent needs | Where it is in the Bedrock response |
-|----------------------|-------------------------------------|
-| the final text answer | `output.message.content[].text`, with `stopReason = "end_turn"` |
-| a tool request | `output.message.content[].toolUse`, with `stopReason = "tool_use"` |
-| tool name / id / arguments | `toolUse.name` / `toolUse.toolUseId` / `toolUse.input` |
-| the assistant turn to append | the whole `output.message` object |
-| the tool result to send back | `{ "role": "user", "content": [{ "toolResult": { "toolUseId": "<id>", "content": [{ "text": "<result>" }] } }] }` |
+| What the agent needs | Where it is in the response |
+|----------------------|-----------------------------|
+| the final text answer | `choices[0].message.content`, with `finish_reason = "stop"` |
+| a tool request | `choices[0].message.tool_calls`, with `finish_reason = "tool_calls"` |
+| tool name / id / arguments | `function.name` / `id` / `function.arguments` (a JSON string) |
+| the assistant turn to append | `{ "role": "assistant", "content": …, "tool_calls": […] }` echoed back verbatim |
+| the tool result to send back | `{ "role": "tool", "tool_call_id": "<id>", "content": "<result>" }` |
 
-## Migration note (previous provider → Bedrock)
+## Migration note (provider history)
 
-The architecture, prompts, tools and loop stay identical — only the provider layer changes. If the code
-still uses the earlier provider names, rename as follows:
+The architecture, prompts, tools and loop have never changed — only the provider layer does:
+**OpenRouter → Amazon Bedrock (Converse API) → Ollama**. Bedrock was dropped because model invocation
+stayed unauthorized on the AWS account; Ollama needs no account, no key and no model-access grant.
 
-| Current | Target |
-|---------|--------|
-| `app.ai.openrouter.api-key` | `app.ai.bedrock.api-key` |
-| `app.ai.openrouter.base-url` | `app.ai.bedrock.endpoint` + `/model/{modelId}/converse` |
-| `app.ai.openrouter.model` | `app.ai.bedrock.model-id` |
-| `app.ai.openrouter.max-tokens` / `.temperature` | `app.ai.bedrock.max-tokens` / `.temperature` |
-| `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` | `AWS_BEDROCK_API_KEY` / `AWS_REGION` / `BEDROCK_MODEL_ID` |
-| `AiConfig.openRouterClient` bean | `AiConfig.bedrockClient` bean |
-| OpenAI `choices[0].message.tool_calls` | `output.message.content[].toolUse` |
-| `{"role":"tool","tool_call_id":...}` | `{"role":"user","content":[{"toolResult":{...}}]}` |
-| "Please set OPENROUTER_API_KEY." | "Please set AWS_BEDROCK_API_KEY." |
+| Bedrock (removed) | Ollama (current) |
+|-------------------|------------------|
+| `app.ai.bedrock.api-key` | *not needed* — the server is reached over plain HTTP |
+| `app.ai.bedrock.region` + `app.ai.bedrock.endpoint` | `app.ai.ollama.base-url` |
+| `app.ai.bedrock.model-id` | `app.ai.ollama.model` |
+| `app.ai.bedrock.max-tokens` / `.temperature` | `app.ai.ollama.max-tokens` / `.temperature` |
+| `AWS_BEDROCK_API_KEY` / `AWS_REGION` / `BEDROCK_MODEL_ID` | `OLLAMA_BASE_URL` / `OLLAMA_MODEL` |
+| `AiConfig.bedrockClient` bean | `AiConfig.ollamaClient` bean |
+| `POST /model/{modelId}/converse` | `POST /v1/chat/completions` |
+| `output.message.content[].toolUse` | `choices[0].message.tool_calls[].function` |
+| `{"role":"user","content":[{"toolResult":{...}}]}` | `{"role":"tool","tool_call_id":...}` |
+| `toolSpec.inputSchema.json` | `function.parameters` (already the registry's shape) |
+| "Please set AWS_BEDROCK_API_KEY." | "Please set OLLAMA_BASE_URL and OLLAMA_MODEL." |
 
 `ToolRegistry`, `ToolDefinition`, `Schema`, the four tool catalogues, `AiChatController`,
 `ChatRequest`/`ChatResponse` and the entire frontend remain untouched.
@@ -571,7 +588,7 @@ intentional, not a bug.
 
 **Checking your work:** compile after every change, then exercise the endpoint through
 `http://localhost:8080/swagger-ui.html`. For the AI, a quick prompt such as "list pending jobs" proves
-the Bedrock config, the tool registry and the service layer all work end to end.
+the Ollama config, the tool registry and the service layer all work end to end.
 
 ---
 

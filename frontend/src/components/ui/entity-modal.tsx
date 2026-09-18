@@ -28,6 +28,8 @@ interface EntityModalProps {
   cancelLabel?: string;
   loading?: boolean;
   children?: ReactNode;
+  /** When true, the confirm button is disabled */
+  disabled?: boolean;
 }
 
 /**
@@ -49,6 +51,7 @@ export function EntityModal({
   cancelLabel = "Cancel",
   loading = false,
   children,
+  disabled,
 }: EntityModalProps) {
   if (!open) return null;
 
@@ -106,6 +109,7 @@ export function EntityModal({
           <Button
             onClick={onConfirm}
             loading={loading}
+            disabled={disabled || loading}
             className={cn("flex-1 rounded-xl font-semibold text-white", TONE_BUTTON[tone])}
           >
             {confirmLabel}

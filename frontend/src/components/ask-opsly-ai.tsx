@@ -12,7 +12,6 @@ import {
   FileText,
   Loader2,
   Mic,
-  MicOff,
   Plus,
   Send,
   Sparkles,
@@ -52,6 +51,19 @@ const VOICE_LANG_OPTIONS = [
 ];
 
 const MAX_ATTACHMENTS = 5;
+
+/**
+ * Welcome-screen prompt chips. These are deliberately role-common:
+ * ADMIN, MANAGER aur TECHNICIAN sabko yehi list dikhti hai.
+ * - "Show my jobs" har role me kaam karta hai: technician ko my_jobs,
+ *   admin/manager ko list_jobs — LLM system prompt me role dekh kar sahi tool chunta hai.
+ * - Baaki do sirf guidance hain, kisi tool/permission ki zaroorat nahi.
+ */
+const SUGGESTIONS = [
+  "What can you help me with?",
+  "Show my jobs",
+  "How do I use the AI assistant?",
+];
 
 function kindOf(file: File): AttachmentKind {
   if (file.type.startsWith("image/")) return "image";
@@ -118,14 +130,7 @@ export function AskOpslyAI() {
   const [inputStatus, setInputStatus] = useState<"idle" | "sending" | "error">(
     "idle"
   );
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      text: "Hi! I'm Opsly AI - ask me anything about your jobs, customers, invoices and payments, or share files, images and videos.",
-      createdAt: Date.now(),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [compose, setCompose] = useState<Attachment[]>([]);
 
   const langRef = useRef(lang);
@@ -191,8 +196,8 @@ export function AskOpslyAI() {
     [addFiles]
   );
 
-  const handleSend = useCallback(async () => {
-    const trimmed = input.trim();
+  const handleSend = useCallback(async (overrideText?: string) => {
+    const trimmed = (overrideText ?? input).trim();
     const hasAttachments = compose.length > 0;
     if ((!trimmed && !hasAttachments) || inputStatus === "sending") return;
 
@@ -331,7 +336,37 @@ export function AskOpslyAI() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4">
+        <div className="flex-1 space-y-3 overflow-y-auto scrollbar-hide px-3 py-4">
+          {messages.length === 0 && (
+            <div className="flex h-full flex-col items-center justify-center px-2 py-6 text-center">
+              <div className="relative mb-3">
+                <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-600/30">
+                  <Bot className="size-7" />
+                </div>
+                <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-white text-indigo-600 shadow ring-1 ring-black/5 dark:bg-slate-900 dark:text-indigo-400 dark:ring-white/10">
+                  <Sparkles className="size-3" />
+                </span>
+              </div>
+              <p className="text-base font-semibold text-slate-900 dark:text-white">
+                Hi, I&apos;m Opsly AI 👋
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Your assistant for jobs, customers, invoices and payments.
+              </p>
+              <div className="mt-4 w-full space-y-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => void handleSend(s)}
+                    disabled={inputStatus === "sending"}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-[13px] font-medium text-slate-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-indigo-500/60 dark:hover:bg-slate-700/60"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {messages.map((m) => (
             <div
               key={m.id}
@@ -356,7 +391,7 @@ export function AskOpslyAI() {
                   </div>
                 )}
                 {m.text && (
-                  <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed sm:text-sm">
+                  <p className="whitespace-pre-wrap overflow-wrap break-word text-[13px] leading-relaxed sm:text-sm">
                     {m.text}
                   </p>
                 )}
@@ -452,24 +487,27 @@ export function AskOpslyAI() {
                 placeholder="Type a message..."
                 rows={1}
                 disabled={inputStatus === "sending"}
-                className="max-h-20 min-w-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-[13px] font-medium text-slate-800 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-[#8b93b8]"
+                className="scrollbar-hide max-h-20 min-w-0 flex-1 resize-none border-0 bg-transparent py-1.5 text-[13px] font-medium text-slate-800 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-[#8b93b8]"
               />
               <button
                 onClick={handleVoiceToggle}
                 disabled={voice.state === "unsupported" || inputStatus === "sending"}
                 className={cn(
-                  "flex size-8 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 dark:text-[#c2c8e4] dark:hover:bg-white/10 dark:hover:text-white",
-                  voice.state === "listening" && "bg-indigo-500/20 text-indigo-600 dark:bg-indigo-500/30 dark:text-white"
+                  "flex size-8 shrink-0 items-center justify-center rounded-full transition",
+                  voice.state === "listening"
+                    ? // Listening: violet circle breathing dim ↔ dark while the user speaks
+                      "animate-pulse bg-violet-500/70 text-violet-50 shadow-sm shadow-violet-500/30"
+                    : "text-slate-500 hover:bg-slate-200 hover:text-slate-700 dark:text-[#c2c8e4] dark:hover:bg-white/10 dark:hover:text-white"
                 )}
                 aria-label={
                   voice.state === "listening" ? "Stop listening" : "Start voice input"
                 }
               >
-                {voice.state === "listening" ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+                <Mic className="size-4" />
               </button>
               <span className="h-5 w-px shrink-0 bg-slate-200 dark:bg-white/15" />
               <button
-                onClick={handleSend}
+                onClick={() => void handleSend()}
                 disabled={
                   (!input.trim() && compose.length === 0) || inputStatus === "sending"
                 }

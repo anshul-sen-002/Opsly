@@ -133,8 +133,8 @@ public class DashboardService {
             activity.add(ActivityItem.builder().type("CUSTOMER_ADDED").title("New customer registered - " + customer.getName()).createdAt(customer.getCreatedAt().toString()).build());
         }
         activity.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
-        if (activity.size() > 8) {
-            activity = activity.subList(0, 8);
+        if (activity.size() > 5) {
+            activity = activity.subList(0, 5);
         }
         return DashboardSummaryResponse.builder().days(days).stats(stats).overview(Overview.builder().labels(labels).completed(completedSeries).inProgress(inProgressSeries).pending(pendingSeries).build()).statusCounts(statusCounts).topCustomers(topCustomers).recentActivity(activity).build();
     }
@@ -199,3 +199,4 @@ public class DashboardService {
         return Math.round(value * 10.0) / 10.0;
     }
 }
+

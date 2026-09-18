@@ -23,7 +23,7 @@ The document is split into four parts, from "what is this" to "how do I work in 
 | Understand who is allowed to do what | [2.2 Roles and permissions](#22-roles-and-permissions) |
 | Understand login and session handling | [2.3 Accounts](#23-accounts-how-users-are-created), [2.4 Login and tokens](#24-login-tokens-and-sessions) |
 | Understand the job → invoice → payment flow | [2.6 Business workflows](#26-business-workflows) |
-| Understand the AI assistant | [Part 3](#part-3--ai-assistant-amazon-bedrock) |
+| Understand the AI assistant | [Part 3](#part-3--ai-assistant-ollama) |
 | Know what is still missing in the project | [4.6 Current state](#46-current-state-and-next-steps) |
 | Follow the coding rules | [4.1 Rules](#41-rules-for-agents-and-developers) to [4.4 Definition of done](#44-definition-of-done) |
 
@@ -39,9 +39,9 @@ The document is split into four parts, from "what is this" to "how do I work in 
 - **How it is built.** A Next.js frontend talks to a single Spring Boot backend over JSON. The backend
   owns every business rule, permission and database write.
 - **The AI part.** The UI has a chat assistant ("Ask Opsly AI"). The frontend calls **our backend
-  agent** (`POST /api/ai/chat`), and the agent calls an **Amazon Bedrock** foundation model. When the
-  model asks for data, the agent runs a *tool* that goes through the same services and the same
-  permission checks as the REST API. See [Part 3](#part-3--ai-assistant-amazon-bedrock).
+  agent** (`POST /api/ai/chat`), and the agent calls an **Ollama** model hosted on our own server (EC2).
+  When the model asks for data, the agent runs a *tool* that goes through the same services and the same
+  permission checks as the REST API. See [Part 3](#part-3--ai-assistant-ollama).
 - **Running it.** Backend: `mvn spring-boot:run` → port `8080`. Frontend: `npm run dev` → port `3000`.
 - **Current status.** The backend is complete. The frontend has the shell (landing page, login pages,
   component library) but the dashboard/list pages are still to be built — see
@@ -68,7 +68,7 @@ The document is split into four parts, from "what is this" to "how do I work in 
 - [2.7 Notifications](#27-notifications)
 - [2.8 API surface](#28-api-surface)
 
-**Part 3 — AI assistant (Amazon Bedrock)**
+**Part 3 — AI assistant (Ollama)**
 - [3.1 How the AI works](#31-how-the-ai-works)
 - [3.2 What the AI can do per role](#32-what-the-ai-can-do-per-role)
 
@@ -145,7 +145,7 @@ Opsly/
 | Data | Spring Data JPA + Hibernate `ddl-auto=update` on PostgreSQL (no migration tool) |
 | API docs | springdoc-openapi → `/swagger-ui.html` |
 | Uploads | Cloudinary (profile images, invoice files) |
-| AI | **Amazon Bedrock** — Bedrock API key + one foundation model |
+| AI | **Ollama** (self-hosted, e.g. on EC2) — OpenAI-compatible chat API + one model |
 | Tests | Vitest + Testing Library (frontend); backend `src/test` is still empty |
 
 ## 1.4 Run it locally
@@ -196,14 +196,13 @@ No secret is ever stored in a committed file. `application.properties` (committe
 | `JWT_REFRESH_EXPIRATION` | refresh-token lifetime in ms (`604800000` = 7 days) |
 | `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD` | the first admin account |
 | `ALLOWED_ORIGINS` | CORS allow-list, comma-separated (`http://localhost:3000`) |
-| `AWS_BEDROCK_API_KEY` | **Amazon Bedrock API key** (bearer token) |
-| `AWS_REGION` | Bedrock region, e.g. `us-east-1` |
-| `BEDROCK_MODEL_ID` | foundation model id, e.g. `amazon.nova-lite-v1:0` |
+| `OLLAMA_BASE_URL` | the Ollama server, e.g. `http://54.161.15.10:11434` |
+| `OLLAMA_MODEL` | the model to run, e.g. `qwen2.5:0.5b` (must support tools) |
 | `SWAGGER_UI_PATH`, `SWAGGER_DOCS_PATH` | Swagger paths |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | file uploads |
 
 Never commit or log `.env`, `application-local.properties`, `.env.local`, passwords, JWT secrets,
-API keys or tokens. The Bedrock key is used by the backend only — never place a secret in a
+API keys or tokens. The Ollama server URL is backend configuration only — never place a secret in a
 `NEXT_PUBLIC_*` variable, because those are readable by everyone in the browser.
 
 ---
@@ -434,11 +433,12 @@ into form fields.
 
 ---
 
-# Part 3 — AI assistant (Amazon Bedrock)
+# Part 3 — AI assistant (Ollama)
 
 ## 3.1 How the AI works
 
-**The short version:** the frontend calls our backend agent, and the agent calls **Amazon Bedrock**.
+**The short version:** the frontend calls our backend agent, and the agent calls an **Ollama** model
+running on our own server (EC2).
 Everything the assistant does is done through the same services the REST API uses, with the same
 permission checks.
 
@@ -450,8 +450,8 @@ permission checks.
                                                                 | prompt + tools
                                                                 v
                                                  +-----------------------------+
-                                                 |  Amazon Bedrock             |
-                                                 |  one foundation model       |
+                                                 |  Ollama (EC2)               |
+                                                 |  one model, OpenAI API      |
                                                  +--------------+--------------+
                                                                 | "call tool X"
                                                                 v
@@ -463,10 +463,10 @@ permission checks.
 
 **Six things to remember:**
 
-1. **The browser never talks to Bedrock.** It only knows `POST /api/ai/chat`. The Bedrock API key lives
-   in the backend environment (`AWS_BEDROCK_API_KEY`).
-2. **The provider is Amazon Bedrock with an API key**, configured by `AWS_BEDROCK_API_KEY`,
-   `AWS_REGION` and `BEDROCK_MODEL_ID` (a single foundation model). OpenRouter is no longer used.
+1. **The browser never talks to the model.** It only knows `POST /api/ai/chat`. The Ollama server is
+   reached from the backend only (`OLLAMA_BASE_URL`).
+2. **The provider is a self-hosted Ollama server**, configured by `OLLAMA_BASE_URL` and `OLLAMA_MODEL`
+   (a single model, called through the OpenAI-compatible API). Bedrock is no longer used.
 3. **The model never decides permissions.** Before a tool runs, the tool registry checks the caller's
    role; a role that is not allowed gets a clear refusal instead of an action.
 4. **The model can only use registered tools** — 27 of them — and each one calls an existing, validated
@@ -555,7 +555,7 @@ Additional rules:
 
 - The caller identity always comes from the JWT (`@AuthenticationPrincipal User`) — never from a request
   body, query parameter or AI tool argument.
-- Bedrock, Cloudinary and database credentials live in `backend/.env` and
+- The Ollama URL, Cloudinary and database credentials live in `backend/.env` and
   `application-local.properties`, both git-ignored, and stay server-side.
 - `NEXT_PUBLIC_*` values are visible to every browser — never put a secret there.
 - Error responses never leak stack traces or internal details (`GlobalExceptionHandler` maps everything).
@@ -590,8 +590,8 @@ A change is complete when:
 | Rotation | Replacing the refresh token on every use so a stolen one is single-use |
 | Agent | The backend component that drives the model, runs its tool requests and returns the answer |
 | Tool | One capability the model may request (e.g. `list_jobs`); executed against a real service |
-| Foundation model | The Amazon Bedrock model the agent calls |
-| Bedrock API key | The bearer token used to authenticate the agent to Amazon Bedrock |
+| Foundation model | The Ollama model the agent calls |
+| Ollama server | The self-hosted LLM runtime (e.g. on EC2) that answers the agent's chat requests |
 | CORS | The browser rule that decides which origins may call the API (`app.cors.allowed-origins`) |
 
 ## 4.6 Current state and next steps
@@ -602,7 +602,7 @@ A change is complete when:
 | Backend tests | `src/test` exists but has no test classes yet |
 | Frontend — shell | **Done** — landing page, auth pages, providers, session handling, full `ui/*` library, AI chat |
 | Frontend — features | **Missing** — `/dashboard`, `/customers`, `/jobs`, `/technicians`, `/invoices`, `/payments`, `/users`, `/tasks`, and the entire customer portal (those links currently 404) |
-| AI | Agent and tools are implemented; the provider target is **Amazon Bedrock** (see [Part 3](#part-3--ai-assistant-amazon-bedrock)) |
+| AI | Agent and tools are implemented; the provider is a self-hosted **Ollama** server (see [Part 3](#part-3--ai-assistant-ollama)) |
 
 **Suggested order of work**
 
@@ -621,7 +621,7 @@ Full frontend detail: [FRONTEND.md §10](frontend/FRONTEND.md).
 
 | Need | Document |
 |------|----------|
-| Backend packages, entities, endpoints, AI internals, Bedrock config | [`backend/BACKEND.md`](backend/BACKEND.md) |
+| Backend packages, entities, endpoints, AI internals, Ollama config | [`backend/BACKEND.md`](backend/BACKEND.md) |
 | Frontend routes, providers, API client, UI components, known gaps | [`frontend/FRONTEND.md`](frontend/FRONTEND.md) |
 
 ---

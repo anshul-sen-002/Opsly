@@ -19,7 +19,7 @@ interface UserActionState {
 
 const COPY: Record<
   UserAction,
-  { title: string; message: string; confirmLabel: string; variant: "danger" | "warning" | "primary"; badge: string }
+  { title: string; message: string; confirmLabel: string; variant: "danger" | "warning" | "primary"; badge: string; disabledRoles?: string[] }
 > = {
   activate: {
     title: "Activate this user?",
@@ -34,6 +34,7 @@ const COPY: Record<
     confirmLabel: "Deactivate",
     variant: "warning",
     badge: "Inactive",
+    disabledRoles: ["ADMIN"], // admin accounts cannot be deactivated
   },
   delete: {
     title: "Delete this user?",
@@ -91,7 +92,12 @@ export function useUserActions(onUpdated: (user: Staff) => void | Promise<unknow
   /** Opens the confirmation dialog for an action */
   const request = useCallback((action: UserAction, user: Staff) => setPending({ action, user }), []);
 
-  const copy = pending ? COPY[pending.action] : null;
+  const copy = pending
+    ? {
+        ...COPY[pending.action],
+        disabled: COPY[pending.action].disabledRoles?.includes(pending.user.role),
+      }
+    : null;
 
   const dialog = (
     <ConfirmDialog
@@ -100,6 +106,7 @@ export function useUserActions(onUpdated: (user: Staff) => void | Promise<unknow
       title={copy?.title ?? ""}
       message={copy?.message ?? ""}
       confirmLabel={copy?.confirmLabel ?? "Confirm"}
+      disabled={pending?.user.role === "ADMIN"}
       variant={copy?.variant ?? "warning"}
       user={
         pending

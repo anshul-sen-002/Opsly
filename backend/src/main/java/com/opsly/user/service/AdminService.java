@@ -178,11 +178,16 @@ public class AdminService {
     }
 
     // Deactivate a staff account (soft disable). Idempotent.
+    // ADMIN accounts cannot be deactivated — they are the system operators
+    // and must always remain accessible for security/auditing.
     @Transactional
     public StaffResponse deactivateStaff(Long id) {
         User user = findUser(id);
         if (user.isDeleted()) {
             throw new BadRequestException("Cannot deactivate a deleted account");
+        }
+        if (user.getRole() == Role.ADMIN) {
+            throw new BadRequestException("Cannot deactivate an admin account");
         }
         if (user.getStatus() == UserStatus.INACTIVE) {
             return toResponse(user);

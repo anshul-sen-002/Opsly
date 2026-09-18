@@ -20,6 +20,8 @@ interface ConfirmDialogProps {
   /** Optional entity card (avatar + name + email + role badge) like the reference modals */
   user?: EntityModalUser | null;
   userBadge?: string;
+  /** When true, the confirm button is disabled and the dialog cannot be confirmed */
+  disabled?: boolean;
 }
 
 const VARIANT_TONE: Record<ConfirmVariant, EntityModalTone> = {
@@ -53,6 +55,7 @@ export function ConfirmDialog({
   icon,
   user,
   userBadge,
+  disabled,
 }: ConfirmDialogProps) {
   const [pending, setPending] = useState(false);
 
@@ -80,6 +83,7 @@ export function ConfirmDialog({
       confirmLabel={pending ? "Working..." : (confirmLabel ?? DEFAULT_LABELS[variant])}
       cancelLabel={cancelLabel}
       loading={pending}
+      disabled={disabled}
     />
   );
 }

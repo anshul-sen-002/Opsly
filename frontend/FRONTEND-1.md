@@ -36,8 +36,8 @@ AI provider key lives on the server.
   a token refresh, and throws a typed `ApiError`.
 - **Sessions:** the refresh token is an HttpOnly cookie, so a page reload restores the session
   silently; a countdown modal warns 30 seconds before the session dies.
-- **AI:** the chat widget calls `POST /api/ai/chat` on our backend. The backend agent talks to Amazon
-  Bedrock. The browser never sees the Bedrock key.
+- **AI:** the chat widget calls `POST /api/ai/chat` on our backend. The backend agent talks to a
+  self-hosted Ollama server. The browser never talks to the model.
 - **Reality check:** the shell exists (landing page, login, components, chat). The dashboard and list
   screens do **not** exist yet — see [10. Known gaps](#10-known-gaps--next-steps).
 
@@ -51,7 +51,7 @@ AI provider key lives on the server.
 - [4. The API client](#4-the-api-client-srclibapits)
 - [5. AI chat UI](#5-ai-chat-ui-componentsask-opsly-aitsx)
 - [6. UI components](#6-ui-components-srccomponents)
-- [7. AI and Amazon Bedrock](#7-ai-and-amazon-bedrock)
+- [7. AI and Ollama](#7-ai-and-ollama)
 - [8. Conventions and rules](#8-conventions-and-rules)
 - [9. Testing](#9-testing)
 - [10. Known gaps / next steps](#10-known-gaps--next-steps)
@@ -231,7 +231,7 @@ const result = await aiApi.chat(input);   // -> { message: string, toolCalls?: [
 ```
 
 **Important:** the browser talks **only** to our own backend (`POST /api/ai/chat`). It never contacts
-the model provider and never holds the provider key — see [§7](#7-ai-and-amazon-bedrock).
+the model provider and never holds the provider URL — see [§7](#7-ai-and-ollama).
 
 ---
 
@@ -279,7 +279,7 @@ components/
 
 ---
 
-# 7. AI and Amazon Bedrock
+# 7. AI and Ollama
 
 **The complete path of one AI question:**
 
@@ -290,7 +290,7 @@ AskOpslyAI (browser)
 Opsly backend agent  (AiChatService + ToolRegistry)
    |  system prompt + user message + the tool list for the caller's role
    v
-Amazon Bedrock  ->  one foundation model
+Ollama (EC2)  ->  one model (OpenAI-compatible)
    |  "call tool list_jobs with { status: 'PENDING' }"
    v
 tool runs the same service the REST API uses -> PostgreSQL
@@ -304,9 +304,9 @@ final text answer  ->  { "message": "...", "toolCalls": [ ... ] }
 - There is **one** call to remember: `aiApi.chat(message)`. Nothing else changes.
 - The response shape is fixed: `{ message, toolCalls? }`. You may show `toolCalls[].tool` as
   "used: list_jobs" for transparency — the UI does not need to know which model answered.
-- **No key, no SDK, no provider URL in the browser.** The Bedrock API key lives only in the backend
-  environment (`AWS_BEDROCK_API_KEY`). `NEXT_PUBLIC_*` values are public, so never put a secret there.
-- Changing the model or region is a backend-only change (`BEDROCK_MODEL_ID`, `AWS_REGION`) — the
+- **No key, no SDK, no provider URL in the browser.** The Ollama URL lives only in the backend
+  configuration (`OLLAMA_BASE_URL`). `NEXT_PUBLIC_*` values are public, so never put a secret there.
+- Changing the server or the model is a backend-only change (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`) — the
   frontend never needs an update.
 - Permission handling is invisible to the UI: if the user's role is not allowed to run the requested
   tool, the assistant answers with a clear explanation instead of doing the action.
