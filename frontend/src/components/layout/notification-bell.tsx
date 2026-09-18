@@ -51,7 +51,7 @@ function resolveNotificationLink(link: string | null, role?: string): string | n
   return link;
 }
 
-/** Bell button + dropdown panel — live unread badge, mark-read, deep links */
+/** Bell button + dropdown panel — live unread badge, unread-only feed, mark-read, deep links */
 export function NotificationBell() {
   const { unreadCount, refresh } = useNotifications();
   const { user } = useAuth();
@@ -64,6 +64,8 @@ export function NotificationBell() {
 
   const loadItems = useCallback(() => {
     setLoading(true);
+    // The backend feed returns UNREAD rows only — rows the user has already
+    // read never reappear in the dropdown.
     notificationApi
       .list(0, PAGE_SIZE)
       .then((page) => setItems(page.content))
@@ -119,7 +121,9 @@ export function NotificationBell() {
   const handleMarkAllRead = async () => {
     try {
       await notificationApi.markAllRead();
-      setItems((current) => current.map((item) => ({ ...item, read: true })));
+      // The feed is unread-only, so after marking everything read the panel
+      // is empty — reflect that immediately instead of showing greyed rows.
+      setItems([]);
     } catch {
       // silent — badge refresh happens below regardless
     }

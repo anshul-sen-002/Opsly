@@ -14,6 +14,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     Page<Notification> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
+    // Dropdown feed — unread entries only, newest first
+    Page<Notification> findByUserIdAndReadFalseOrderByCreatedAtDesc(Long userId, Pageable pageable);
+
     long countByUserIdAndReadFalse(Long userId);
 
     // Bulk mark-as-read for the current user only

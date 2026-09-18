@@ -353,8 +353,9 @@ otherwise                   -> ISSUED
 - `activate` / `deactivate` are idempotent and refuse to touch a deleted account.
 - `deleteStaff` is a soft delete (`deleted = true`, `status = INACTIVE`) and refuses self-deletion;
   `restoreStaff` reactivates the account.
-- List responses exclude CUSTOMER accounts; detail responses add technician fields (name, phone,
-  specialization).
+- List responses exclude CUSTOMER accounts; list **and** detail responses add the technician fields
+  (name, phone, specialization) via one batched lookup per page — the login account itself stores no
+  phone, so without this merge the Users table shows "—" for every technician.
 
 ## Uploads and dashboard
 
@@ -375,6 +376,11 @@ a service writes data and publishes an event (e.g. JobAssignedEvent)
         -> NotificationService.create(userId, type, title, message, link)
         -> row in the Notification table -> the bell polls the unread count
 ```
+
+**The feed (`GET /api/notifications`) returns unread rows only.** It backs the bell dropdown, which is
+a to-do list, not an archive: once an entry is marked read (click or "mark all read") it disappears
+from the feed and never reappears. Read rows remain in the database; only `unread-count` and this
+feed's `read=false` filter decide what the bell shows.
 
 | Event | Who is notified |
 |-------|-----------------|

@@ -22,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * AdminService handles staff account management.
@@ -76,8 +78,25 @@ public class AdminService {
     public Page<StaffResponse> getAllStaff(Pageable pageable, boolean deleted) {
         // Exclude CUSTOMER accounts — they are not staff.
         // deleted=false → active accounts, deleted=true → trash (restorable)
-        return userRepository.findByRoleNotAndDeleted(Role.CUSTOMER, deleted, pageable)
-                .map(u -> modelMapper.map(u, StaffResponse.class));
+        Page<User> staff = userRepository.findByRoleNotAndDeleted(Role.CUSTOMER, deleted, pageable);
+        // Merge the linked Technician profile (name, phone, specialization) into
+        // the list response with ONE batched query — the User account alone has
+        // no phone/name, which left the list showing "—" while the detail
+        // endpoint (toDetailResponse) showed the values.
+        Map<Long, Technician> technicianByUserId = staff.getContent().isEmpty()
+                ? Map.of()
+                : technicianRepository.findByUserIn(staff.getContent()).stream()
+                        .collect(Collectors.toMap(t -> t.getUser().getId(), t -> t));
+        return staff.map(user -> {
+            StaffResponse response = modelMapper.map(user, StaffResponse.class);
+            Technician technician = technicianByUserId.get(user.getId());
+            if (technician != null) {
+                response.setName(technician.getName());
+                response.setPhone(technician.getPhone());
+                response.setSpecialization(technician.getSpecialization());
+            }
+            return response;
+        });
     }
 
     public StaffResponse getStaffById(Long id) {

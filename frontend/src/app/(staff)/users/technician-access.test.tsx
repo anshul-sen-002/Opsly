@@ -73,6 +73,15 @@ describe("Technician read-only lists and own profile", () => {
     expect(screen.queryByText("Grant Access")).toBeNull();
   });
 
+  it("renders the API phone in both the desktop table and mobile user card", async () => {
+    mocks.role = "ADMIN";
+    render(<UsersList />);
+    const phones = await screen.findAllByText(staff.phone);
+    expect(phones).toHaveLength(2);
+    expect(phones.some((phone) => phone.closest("td") !== null)).toBe(true);
+    expect(phones.some((phone) => phone.tagName === "DD")).toBe(true);
+  });
+
   it("preserves administrator user actions", async () => {
     mocks.role = "ADMIN";
     render(<UsersList />);

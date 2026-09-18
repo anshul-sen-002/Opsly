@@ -193,7 +193,7 @@ to `/api`, so `aiApi.chat` calls `POST {API_BASE}/api/ai/chat`):
 | `paymentApi` | `list`, `create`, `update`, `delete`, `getById`, `listByInvoice`, `myPayments` |
 | `technicianApi` | `list`, `getById`, `getMyProfile` |
 | `userProfileApi` | `me`, `update`, `uploadProfileImage` |
-| `notificationApi` | `list`, `unreadCount`, `markRead`, `markAllRead` |
+| `notificationApi` | `list` (unread rows only), `unreadCount`, `markRead`, `markAllRead` |
 | `aiApi` | `chat(message)` |
 
 **Handling an error in a form** (the pattern the login pages use):

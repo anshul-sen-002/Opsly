@@ -27,7 +27,9 @@ public class NotificationService {
     private final UserRepository userRepository;
 
     public Page<NotificationResponse> getNotifications(User user, Pageable pageable) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable)
+        // Unread rows only — the dropdown is a to-do list, not an archive.
+        // Read entries stay in the database; they just stop appearing here.
+        return notificationRepository.findByUserIdAndReadFalseOrderByCreatedAtDesc(user.getId(), pageable)
                 .map(NotificationResponse::from);
     }
 

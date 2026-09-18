@@ -9,6 +9,7 @@ import com.opsly.common.upload.UploadResult;
 import com.opsly.invoice.dto.InvoiceRequest;
 import com.opsly.invoice.dto.InvoiceResponse;
 import com.opsly.invoice.entity.Invoice;
+import com.opsly.invoice.entity.InvoiceSequence;
 import com.opsly.invoice.entity.InvoiceStatus;
 import com.opsly.invoice.repository.InvoiceRepository;
 import com.opsly.job.entity.Job;
@@ -37,6 +38,7 @@ import java.time.LocalDate;
 public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
+    private final InvoiceSequence invoiceSequence;
     private final JobService jobService;
     private final PaymentRepository paymentRepository;
     private final CloudinaryService cloudinaryService;
@@ -58,9 +60,9 @@ public class InvoiceService {
         BigDecimal tax = request.getTax() != null ? request.getTax() : BigDecimal.ZERO;
         BigDecimal total = request.getSubtotal().add(tax);
 
-        // invoiceNumber is auto-generated in Invoice.@PrePersist via the
-        // DB-managed InvoiceSequence (restart- and concurrency-safe).
+        // Allocate the DB sequence number before INSERT; @PrePersist only sets timestamps.
         Invoice invoice = Invoice.builder()
+                .invoiceNumber(invoiceSequence.nextNumber())
                 .job(job)
                 .customer(job.getCustomer())
                 .subtotal(request.getSubtotal())
