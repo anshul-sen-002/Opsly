@@ -371,7 +371,7 @@ single `Map<String, ToolDefinition>` at startup via `@PostConstruct`.
 | `CustomerTools` | CUSTOMER | `create_job_request`, `my_job_requests`, `get_my_job_details` | Own service requests |
 | `ServiceRequestTools` | ALL | `get_my_service_requests`, `get_service_request_details`, `get_today_schedule`, `search_service_requests` | Role-scoped request list/search |
 
-**Total: 22 tools** across all classes.
+**Total: 31 tools** across all classes.
 
 ## How a tool call is authorised
 
@@ -414,9 +414,9 @@ placeholders — never hardcodes secrets.
 | OPENROUTER_API_KEY | Bearer key for OpenRouter chat API |
 | OPENROUTER_MODEL | Model name (default: google/gemini-2.5-flash-preview-04-17) |
 | OPENROUTER_MAX_TOKENS | Max response tokens (default 1024) |
-| OPENROUTER_TEMPERATURE | Sampling temperature (default  .3) |
+| OPENROUTER_TEMPERATURE | Sampling temperature (default 0.3) |
 | OPENROUTER_BASE_URL | Override API base URL if needed |
-| OPENSEARCH_ENABLED | Enable/disable OpenSearch (default alse) |
+| OPENSEARCH_ENABLED | Enable/disable OpenSearch (default false) |
 | OPENSEARCH_HOST, OPENSEARCH_PORT, OPENSEARCH_SCHEME | OpenSearch connection |
 | CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET | Image uploads |
 | SWAGGER_UI_PATH, SWAGGER_DOCS_PATH | Swagger endpoints |
@@ -425,7 +425,7 @@ placeholders — never hardcodes secrets.
 
 - **Admin bootstrap:** AdminBootstrap runs on startup. If no ADMIN exists, it creates one from
   INITIAL_ADMIN_EMAIL/INITIAL_ADMIN_PASSWORD. Idempotent — never logs credentials.
-- **Cookie security:** pp.cookie.secure=false in local profile (plain HTTP). Set to 	rue behind
+- **Cookie security:** `app.cookie.secure=false` in local profile (plain HTTP). Set to 	rue behind
   HTTPS. SameSite = Lax, path = /, HttpOnly = true.
 - **Refresh token rotation:** on every /auth/refresh call, the old token is revoked in the DB and a
   new one issued. Logout revokes the token in the DB and clears the cookie.
@@ -439,11 +439,11 @@ placeholders — never hardcodes secrets.
 | File | Committed? | Holds |
 |------|-----------|-------|
 | `application.properties` | yes | ${ENV_VAR} placeholders + spring.profiles.active=local |
-| pplication-local.properties | no | local dev values |
+| `application-local.properties` | no | local dev values |
 | `backend/.env` | no | all environment variables |
 | pom.xml | yes | Maven dependencies |
 
-**Never commit or log** .env, pplication-local.properties, passwords, JWT secrets, API keys, or
+**Never commit or log** .env, `application-local.properties`, passwords, JWT secrets, API keys, or
 database credentials.
 
 ---
@@ -486,7 +486,7 @@ Every endpoint returns ApiResponse<T>:
 |----------|---------|
 | May this role call this endpoint? | @PreAuthorize on the controller |
 | May this user act on this record? | the service (ownership checks) |
-| May the AI run this tool for this user? | llowedRoles in the tool definition |
+| May the AI run this tool for this user? | `allowedRoles` in the tool definition |
 | Is this account still allowed at all? |  JwtAuthFilter (status + soft-delete check) |
 
 Additional rules:
@@ -494,7 +494,7 @@ Additional rules:
 - Caller identity **always** comes from the JWT (@AuthenticationPrincipal User) — never from a
   request body, query parameter, or AI tool argument.
 - OPENROUTER_API_KEY, Cloudinary credentials, and database credentials live in `backend/.env` /
-  pplication-local.properties (git-ignored), server-side only.
+  `application-local.properties` (git-ignored), server-side only.
 - NEXT_PUBLIC_* values are visible to every browser — never put a secret there.
 - Error responses never leak stack traces or internal details.
 - BCrypt is used for password hashing; never weaken for dev convenience.
@@ -505,7 +505,7 @@ Additional rules:
 
 | Area | Status |
 |------|--------|
-| Backend | Complete — 11 packages, all endpoints, notifications, uploads, AI agent with 22 tools, OpenSearch search |
+| Backend | Complete — 11 packages, all endpoints, notifications, uploads, AI agent with 31 tools, OpenSearch search |
 | Backend tests | src/test exists but has **no test classes yet** |
 | AI provider | OpenRouter (https://openrouter.ai), model google/gemini-2.5-flash-preview-04-17 |
 | Frontend | Shell done (landing, login pages, providers, session handling, UI library, chat widget). Dashboard + list pages missing. |

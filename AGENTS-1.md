@@ -449,18 +449,19 @@ through the same services the REST API uses, with the same permission checks.
 |  AskOpslyAI (UI)   | -------------------------> |  Opsly agent (backend)      |
 |  chat + voice      | <------------------------- |  AiChatService+ToolRegistry |
 +--------------------+   { message, toolCalls }   +--------------+--------------+
-                                                                | prompt + tools
-                                                                v
-                                                 +-----------------------------+
-                                              |  OpenRouter (https://openrouter.ai)               |
-                                              |  OpenAI-compatible API, Bearer key auth           |
-                                              |  default model: google/gemini-2.5-flash-preview-04-17 |
-                                                                | "call tool X"
-                                                                v
-                                                 +-----------------------------+
-                                                 |  tool -> the same service   |
-                                                 |  the REST API uses -> DB    |
-                                                 +-----------------------------+
+                                                             | prompt + tools
+                                                             v
+                                              +------------------------------+
+                                              |  OpenRouter                  |
+                                              |  (https://openrouter.ai)     |
+                                              |  OpenAI-compatible, Bearer   |
+                                              +--------------+---------------+
+                                                             | "call tool X"
+                                                             v
+                                              +------------------------------+
+                                              |  tool -> the same service    |
+                                              |  the REST API uses -> DB     |
+                                              +------------------------------+
 ```
 
 **Six things to remember:**
@@ -471,7 +472,7 @@ through the same services the REST API uses, with the same permission checks.
    It is an OpenAI-compatible API that proxies many models — no self-hosted server, no SDK.
 3. **The model never decides permissions.** Before a tool runs, the tool registry checks the caller's
    role; a role that is not allowed gets a clear refusal instead of an action.
-4. **The model can only use registered tools** — 22+ of them across five tool classes — and each one calls an existing, validated
+4. **The model can only use registered tools** — 31 of them across five tool classes — and each one calls an existing, validated
    service. There is no raw SQL, no shell and no reflection.
 5. **Identity always comes from the JWT**, never from the conversation. So a technician asking the
    assistant about "my jobs" gets their own jobs, and a customer cannot read anyone else's data — even
@@ -480,8 +481,7 @@ through the same services the REST API uses, with the same permission checks.
    plus a record of what was attempted.
 
 Switching model or provider settings is a **backend-only change** — the UI contract
-(`{ message }` in, `{ message, toolCalls }` out) stays the same. Technical detail:
-[BACKEND.md §7–§9](backend/BACKEND.md) aur [3.3](#33-tool-registry-and-provider-details).
+(`{ message }` in, `{ message, toolCalls }` out) stays the same. Technical detail: [BACKEND.md §7–§9](backend/BACKEND.md) and [3.3](#33-tool-registry-and-provider-details).
 
 ## 3.2 What the AI can do per role
 
@@ -517,7 +517,7 @@ request is outside the role, the assistant says so rather than failing silently.
 - Extra headers required by free-tier models: `HTTP-Referer: https://opsly.app`, `X-Title: Opsly`.
 - Endpoint called: `POST /v1/chat/completions` (OpenAI-compatible format).
 
-**Tool registry (5 tool classes, ~22+ tools total):**
+**Tool registry (5 tool classes, 31 tools total):**
 
 | Tool class | Role allowed | Domains covered | Example tools |
 |------------|--------------|-----------------|---------------|
@@ -549,71 +549,6 @@ request is outside the role, the assistant says so rather than failing silently.
   when OpenSearch is not available. This is used by the `search_service_requests` tool.
 
 Full backend detail: [BACKEND.md §7–§9](backend/BACKEND.md).
-
-**Provider configuration** (all from `backend/.env` or environment variables):
-
-| Variable | Default | Meaning |
-|----------|---------|---------|
-| `OPENROUTER_API_KEY` | (required) | Bearer API key for OpenRouter |
-| `OPENROUTER_MODEL` | `google/gemini-2.5-flash-preview-04-17` | Model used for chat |
-| `OPENROUTER_MAX_TOKENS` | `1024` | Max tokens per response |
-| `OPENROUTER_TEMPERATURE` | `0.3` | Sampling temperature |
-
-**How the agent calls OpenRouter:**
-
-- Spring `RestClient` bean (`openRouterClient`) — no SDK involved.
-- Base URL: `https://openrouter.ai/api/v1` (configurable via `OPENROUTER_BASE_URL`).
-- Auth: `Authorization: Bearer <key>` header, set automatically.
-- Extra headers required by free-tier models: `HTTP-Referer: https://opsly.app`, `X-Title: Opsly`.
-- Endpoint called: `POST /v1/chat/completions` (OpenAI-compatible format).
-
-**Tool registry (5 tool classes, ~22+ tools total):**
-
-| Tool class | Role allowed | Domains covered | Example tools |
-|------------|--------------|-----------------|---------------|
-| `AdminTools` | ADMIN only | Staff management | `create_staff`, `list_staff`, `deactivate_staff` |
-| `ManagerTools` | ADMIN, MANAGER | Customers, technicians, jobs (assign/close), invoices, payments | `create_customer`, `assign_technician`, `close_job`, `create_invoice`, `record_payment`, ... |
-| `TechnicianTools` | TECHNICIAN | Own jobs only | `my_jobs`, `get_my_job`, `start_job`, `complete_job` |
-| `CustomerTools` | CUSTOMER | Own service requests only | `create_job_request`, `my_job_requests`, `get_my_job_details` |
-| `ServiceRequestTools` | All roles | Service request search/schedule (role-scoped) | `get_my_service_requests`, `get_service_request_details`, `get_today_schedule`, `search_service_requests` |
-
-**Authorization model:**
-
-- Every tool has an `allowedRoles` set. The registry checks it **before** executing.
-- If the caller's role is not allowed, the agent returns a clear error message — the model never
-  silently performs an unauthorized action.
-- Identity always comes from the JWT (`@AuthenticationPrincipal User`), never from tool arguments.
-- Tools call the **same services** the REST API uses, so ownership and status rules are identical
-  whether the action comes from the UI or the chat.
-
-**Agent loop:**
-
-- Max 8 iterations (`MAX_ITERATIONS`). If the model keeps calling tools without producing a final
-  answer, the user gets the last attempt summary.
-- Each iteration: system prompt + conversation history + tool definitions → OpenRouter → tool calls
-  (if any) → execute via registry → feed results back → repeat or finish.
-
-**OpenSearch integration (optional search layer):**
-
-- `ServiceRequestSearchService` adds keyword search over service requests, with PostgreSQL fallback
-  when OpenSearch is not available. This is used by the `search_service_requests` tool.
-
-Full backend detail: [BACKEND.md §7–§9](backend/BACKEND.md).
-
----
-
-The assistant is available to every signed-in user, but the tool list shrinks with the role:
-
-| Role | The assistant can... | Example prompt |
-|------|---------------------|----------------|
-| ADMIN | everything a manager can, plus staff management | "create a manager account for priya@shop.com" |
-| MANAGER | work with customers, technicians, jobs, invoices and payments | "assign job 12 to the electrician" / "record a ₹2000 UPI payment on INV-2026-0007" |
-| TECHNICIAN | work with **their own** jobs | "what is on my plate today?" / "start job 15" |
-| CUSTOMER | work with **their own** requests and bills | "raise a request: AC not cooling, tomorrow 10am" / "how much do I owe?" |
-
-Because the tools run the real services, an action taken through the assistant behaves exactly like the
-action taken in the UI: the same validation, the same status rules, the same notifications. When a
-request is outside the role, the assistant says so rather than failing silently.
 
 ---
 
@@ -717,7 +652,7 @@ A change is complete when:
 
 | Area | State |
 |------|-------|
-| Backend | **Complete** — 11 packages, all endpoints, notifications, uploads, AI agent with 22 tools |
+| Backend | **Complete** — 11 packages, all endpoints, notifications, uploads, AI agent with 31 tools |
 | Backend tests | `src/test` exists but has no test classes yet |
 | Frontend — shell | **Done** — landing page, auth pages, providers, session handling, full `ui/*` library, AI chat |
 | Frontend — features | **Missing** — `/dashboard`, `/customers`, `/jobs`, `/technicians`, `/invoices`, `/payments`, `/users`, `/tasks`, and the entire customer portal (those links currently 404) |
