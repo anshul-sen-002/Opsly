@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.opsly.ai.tool.definition.AdminTools;
 import com.opsly.ai.tool.definition.CustomerTools;
 import com.opsly.ai.tool.definition.ManagerTools;
+import com.opsly.ai.tool.definition.ServiceRequestTools;
 import com.opsly.ai.tool.definition.TechnicianTools;
 import com.opsly.user.entity.User;
 import jakarta.annotation.PostConstruct;
@@ -31,6 +32,7 @@ public class ToolRegistry {
     private final ManagerTools managerTools;
     private final TechnicianTools technicianTools;
     private final CustomerTools customerTools;
+    private final ServiceRequestTools serviceRequestTools;
     private final ObjectMapper mapper;
 
     private final Map<String, ToolDefinition> registry = new LinkedHashMap<>();
@@ -42,6 +44,7 @@ public class ToolRegistry {
         register(managerTools.getTools());
         register(technicianTools.getTools());
         register(customerTools.getTools());
+        register(serviceRequestTools.getTools());
 
         toolDefinitionsForLlm = new ArrayList<>();
         for (ToolDefinition td : registry.values()) {

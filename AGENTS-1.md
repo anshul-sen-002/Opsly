@@ -23,7 +23,7 @@ The document is split into four parts, from "what is this" to "how do I work in 
 | Understand who is allowed to do what | [2.2 Roles and permissions](#22-roles-and-permissions) |
 | Understand login and session handling | [2.3 Accounts](#23-accounts-how-users-are-created), [2.4 Login and tokens](#24-login-tokens-and-sessions) |
 | Understand the job → invoice → payment flow | [2.6 Business workflows](#26-business-workflows) |
-| Understand the AI assistant | [Part 3](#part-3--ai-assistant-ollama) |
+| Understand the AI assistant | [Part 3](#part-3--ai-assistant-openrouter) |
 | Know what is still missing in the project | [4.6 Current state](#46-current-state-and-next-steps) |
 | Follow the coding rules | [4.1 Rules](#41-rules-for-agents-and-developers) to [4.4 Definition of done](#44-definition-of-done) |
 
@@ -39,9 +39,9 @@ The document is split into four parts, from "what is this" to "how do I work in 
 - **How it is built.** A Next.js frontend talks to a single Spring Boot backend over JSON. The backend
   owns every business rule, permission and database write.
 - **The AI part.** The UI has a chat assistant ("Ask Opsly AI"). The frontend calls **our backend
-  agent** (`POST /api/ai/chat`), and the agent calls an **Ollama** model hosted on our own server (EC2).
-  When the model asks for data, the agent runs a *tool* that goes through the same services and the same
-  permission checks as the REST API. See [Part 3](#part-3--ai-assistant-ollama).
+  agent** (`POST /api/ai/chat`), and the agent calls **OpenRouter** (https://openrouter.ai) over HTTPS
+  with a Bearer API key. When the model asks for data, the agent runs a *tool* that goes through the same
+  services and the same permission checks as the REST API. See [Part 3](#part-3--ai-assistant-openrouter).
 - **Running it.** Backend: `mvn spring-boot:run` → port `8080`. Frontend: `npm run dev` → port `3000`.
 - **Current status.** The backend is complete. The frontend has the shell (landing page, login pages,
   component library) but the dashboard/list pages are still to be built — see
@@ -68,9 +68,10 @@ The document is split into four parts, from "what is this" to "how do I work in 
 - [2.7 Notifications](#27-notifications)
 - [2.8 API surface](#28-api-surface)
 
-**Part 3 — AI assistant (Ollama)**
+**Part 3 — AI assistant (OpenRouter)**
 - [3.1 How the AI works](#31-how-the-ai-works)
 - [3.2 What the AI can do per role](#32-what-the-ai-can-do-per-role)
+- [3.3 Tool registry and provider details](#33-tool-registry-and-provider-details)
 
 **Part 4 — Working in this repo**
 - [4.1 Rules for agents and developers](#41-rules-for-agents-and-developers)
@@ -145,7 +146,7 @@ Opsly/
 | Data | Spring Data JPA + Hibernate `ddl-auto=update` on PostgreSQL (no migration tool) |
 | API docs | springdoc-openapi → `/swagger-ui.html` |
 | Uploads | Cloudinary (profile images, invoice files) |
-| AI | **Ollama** (self-hosted, e.g. on EC2) — OpenAI-compatible chat API + one model |
+| AI | **OpenRouter** (https://openrouter.ai) — OpenAI-compatible API, Bearer key auth, one model (default: google/gemini-2.5-flash-preview-04-17) |
 | Tests | Vitest + Testing Library (frontend); backend `src/test` is still empty |
 
 ## 1.4 Run it locally
@@ -196,13 +197,15 @@ No secret is ever stored in a committed file. `application.properties` (committe
 | `JWT_REFRESH_EXPIRATION` | refresh-token lifetime in ms (`604800000` = 7 days) |
 | `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD` | the first admin account |
 | `ALLOWED_ORIGINS` | CORS allow-list, comma-separated (`http://localhost:3000`) |
-| `OLLAMA_BASE_URL` | the Ollama server, e.g. `http://54.161.15.10:11434` |
-| `OLLAMA_MODEL` | the model to run, e.g. `qwen2.5:0.5b` (must support tools) |
+| `OPENROUTER_API_KEY` | Bearer API key for OpenRouter (OpenAI-compatible) |
+| `OPENROUTER_MODEL` | Model to use, e.g. `google/gemini-2.5-flash-preview-04-17` (default same) |
+| `OPENROUTER_MAX_TOKENS` | Max tokens per response (default `1024`) |
+| `OPENROUTER_TEMPERATURE` | Sampling temperature (default `0.3`) |
 | `SWAGGER_UI_PATH`, `SWAGGER_DOCS_PATH` | Swagger paths |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | file uploads |
 
 Never commit or log `.env`, `application-local.properties`, `.env.local`, passwords, JWT secrets,
-API keys or tokens. The Ollama server URL is backend configuration only — never place a secret in a
+API keys or tokens. The OpenRouter API key is backend configuration only — never place a secret in a
 `NEXT_PUBLIC_*` variable, because those are readable by everyone in the browser.
 
 ---
@@ -433,14 +436,13 @@ into form fields.
 
 ---
 
-# Part 3 — AI assistant (Ollama)
+# Part 3 — AI assistant (OpenRouter)
 
 ## 3.1 How the AI works
 
-**The short version:** the frontend calls our backend agent, and the agent calls an **Ollama** model
-running on our own server (EC2).
-Everything the assistant does is done through the same services the REST API uses, with the same
-permission checks.
+**The short version:** the frontend calls our backend agent, and the agent calls **OpenRouter**
+(https://openrouter.ai) over HTTPS with a Bearer API key. Everything the assistant does is done
+through the same services the REST API uses, with the same permission checks.
 
 ```
 +--------------------+     POST /api/ai/chat      +-----------------------------+
@@ -450,9 +452,9 @@ permission checks.
                                                                 | prompt + tools
                                                                 v
                                                  +-----------------------------+
-                                                 |  Ollama (EC2)               |
-                                                 |  one model, OpenAI API      |
-                                                 +--------------+--------------+
+                                              |  OpenRouter (https://openrouter.ai)               |
+                                              |  OpenAI-compatible API, Bearer key auth           |
+                                              |  default model: google/gemini-2.5-flash-preview-04-17 |
                                                                 | "call tool X"
                                                                 v
                                                  +-----------------------------+
@@ -463,13 +465,13 @@ permission checks.
 
 **Six things to remember:**
 
-1. **The browser never talks to the model.** It only knows `POST /api/ai/chat`. The Ollama server is
-   reached from the backend only (`OLLAMA_BASE_URL`).
-2. **The provider is a self-hosted Ollama server**, configured by `OLLAMA_BASE_URL` and `OLLAMA_MODEL`
-   (a single model, called through the OpenAI-compatible API). Bedrock is no longer used.
+1. **The browser never talks to the model.** It only knows `POST /api/ai/chat`. OpenRouter is
+   reached from the backend only (`OPENROUTER_API_KEY`).
+2. **The provider is OpenRouter**, configured by `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` (default: `google/gemini-2.5-flash-preview-04-17`)
+   It is an OpenAI-compatible API that proxies many models — no self-hosted server, no SDK.
 3. **The model never decides permissions.** Before a tool runs, the tool registry checks the caller's
    role; a role that is not allowed gets a clear refusal instead of an action.
-4. **The model can only use registered tools** — 27 of them — and each one calls an existing, validated
+4. **The model can only use registered tools** — 22+ of them across five tool classes — and each one calls an existing, validated
    service. There is no raw SQL, no shell and no reflection.
 5. **Identity always comes from the JWT**, never from the conversation. So a technician asking the
    assistant about "my jobs" gets their own jobs, and a customer cannot read anyone else's data — even
@@ -477,11 +479,128 @@ permission checks.
 6. **The agent loop is bounded** (8 rounds). If the model cannot finish, the user gets a plain message
    plus a record of what was attempted.
 
-Switching provider, region or model is a **backend-only change** — the UI contract
+Switching model or provider settings is a **backend-only change** — the UI contract
 (`{ message }` in, `{ message, toolCalls }` out) stays the same. Technical detail:
-[BACKEND.md §8–§9](backend/BACKEND.md).
+[BACKEND.md §7–§9](backend/BACKEND.md) aur [3.3](#33-tool-registry-and-provider-details).
 
 ## 3.2 What the AI can do per role
+
+The assistant is available to every signed-in user, but the tool list shrinks with the role:
+
+| Role | The assistant can... | Example prompt |
+|------|---------------------|----------------|
+| ADMIN | everything a manager can, plus staff management | "create a manager account for priya@shop.com" |
+| MANAGER | work with customers, technicians, jobs, invoices and payments | "assign job 12 to the electrician" / "record a ₹2000 UPI payment on INV-2026-0007" |
+| TECHNICIAN | work with **their own** jobs | "what is on my plate today?" / "start job 15" |
+| CUSTOMER | work with **their own** requests and bills | "raise a request: AC not cooling, tomorrow 10am" / "how much do I owe?" |
+
+Because the tools run the real services, an action taken through the assistant behaves exactly like the
+action taken in the UI: the same validation, the same status rules, the same notifications. When a
+request is outside the role, the assistant says so rather than failing silently.
+
+## 3.3 Tool registry and provider details
+
+**Provider configuration** (all from `backend/.env` or environment variables):
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `OPENROUTER_API_KEY` | (required) | Bearer API key for OpenRouter |
+| `OPENROUTER_MODEL` | `google/gemini-2.5-flash-preview-04-17` | Model used for chat |
+| `OPENROUTER_MAX_TOKENS` | `1024` | Max tokens per response |
+| `OPENROUTER_TEMPERATURE` | `0.3` | Sampling temperature |
+
+**How the agent calls OpenRouter:**
+
+- Spring `RestClient` bean (`openRouterClient`) — no SDK involved.
+- Base URL: `https://openrouter.ai/api/v1` (configurable via `OPENROUTER_BASE_URL`).
+- Auth: `Authorization: Bearer <key>` header, set automatically.
+- Extra headers required by free-tier models: `HTTP-Referer: https://opsly.app`, `X-Title: Opsly`.
+- Endpoint called: `POST /v1/chat/completions` (OpenAI-compatible format).
+
+**Tool registry (5 tool classes, ~22+ tools total):**
+
+| Tool class | Role allowed | Domains covered | Example tools |
+|------------|--------------|-----------------|---------------|
+| `AdminTools` | ADMIN only | Staff management | `create_staff`, `list_staff`, `deactivate_staff` |
+| `ManagerTools` | ADMIN, MANAGER | Customers, technicians, jobs (assign/close), invoices, payments | `create_customer`, `assign_technician`, `close_job`, `create_invoice`, `record_payment`, ... |
+| `TechnicianTools` | TECHNICIAN | Own jobs only | `my_jobs`, `get_my_job`, `start_job`, `complete_job` |
+| `CustomerTools` | CUSTOMER | Own service requests only | `create_job_request`, `my_job_requests`, `get_my_job_details` |
+| `ServiceRequestTools` | All roles | Service request search/schedule (role-scoped) | `get_my_service_requests`, `get_service_request_details`, `get_today_schedule`, `search_service_requests` |
+
+**Authorization model:**
+
+- Every tool has an `allowedRoles` set. The registry checks it **before** executing.
+- If the caller's role is not allowed, the agent returns a clear error message — the model never
+  silently performs an unauthorized action.
+- Identity always comes from the JWT (`@AuthenticationPrincipal User`), never from tool arguments.
+- Tools call the **same services** the REST API uses, so ownership and status rules are identical
+  whether the action comes from the UI or the chat.
+
+**Agent loop:**
+
+- Max 8 iterations (`MAX_ITERATIONS`). If the model keeps calling tools without producing a final
+  answer, the user gets the last attempt summary.
+- Each iteration: system prompt + conversation history + tool definitions → OpenRouter → tool calls
+  (if any) → execute via registry → feed results back → repeat or finish.
+
+**OpenSearch integration (optional search layer):**
+
+- `ServiceRequestSearchService` adds keyword search over service requests, with PostgreSQL fallback
+  when OpenSearch is not available. This is used by the `search_service_requests` tool.
+
+Full backend detail: [BACKEND.md §7–§9](backend/BACKEND.md).
+
+**Provider configuration** (all from `backend/.env` or environment variables):
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `OPENROUTER_API_KEY` | (required) | Bearer API key for OpenRouter |
+| `OPENROUTER_MODEL` | `google/gemini-2.5-flash-preview-04-17` | Model used for chat |
+| `OPENROUTER_MAX_TOKENS` | `1024` | Max tokens per response |
+| `OPENROUTER_TEMPERATURE` | `0.3` | Sampling temperature |
+
+**How the agent calls OpenRouter:**
+
+- Spring `RestClient` bean (`openRouterClient`) — no SDK involved.
+- Base URL: `https://openrouter.ai/api/v1` (configurable via `OPENROUTER_BASE_URL`).
+- Auth: `Authorization: Bearer <key>` header, set automatically.
+- Extra headers required by free-tier models: `HTTP-Referer: https://opsly.app`, `X-Title: Opsly`.
+- Endpoint called: `POST /v1/chat/completions` (OpenAI-compatible format).
+
+**Tool registry (5 tool classes, ~22+ tools total):**
+
+| Tool class | Role allowed | Domains covered | Example tools |
+|------------|--------------|-----------------|---------------|
+| `AdminTools` | ADMIN only | Staff management | `create_staff`, `list_staff`, `deactivate_staff` |
+| `ManagerTools` | ADMIN, MANAGER | Customers, technicians, jobs (assign/close), invoices, payments | `create_customer`, `assign_technician`, `close_job`, `create_invoice`, `record_payment`, ... |
+| `TechnicianTools` | TECHNICIAN | Own jobs only | `my_jobs`, `get_my_job`, `start_job`, `complete_job` |
+| `CustomerTools` | CUSTOMER | Own service requests only | `create_job_request`, `my_job_requests`, `get_my_job_details` |
+| `ServiceRequestTools` | All roles | Service request search/schedule (role-scoped) | `get_my_service_requests`, `get_service_request_details`, `get_today_schedule`, `search_service_requests` |
+
+**Authorization model:**
+
+- Every tool has an `allowedRoles` set. The registry checks it **before** executing.
+- If the caller's role is not allowed, the agent returns a clear error message — the model never
+  silently performs an unauthorized action.
+- Identity always comes from the JWT (`@AuthenticationPrincipal User`), never from tool arguments.
+- Tools call the **same services** the REST API uses, so ownership and status rules are identical
+  whether the action comes from the UI or the chat.
+
+**Agent loop:**
+
+- Max 8 iterations (`MAX_ITERATIONS`). If the model keeps calling tools without producing a final
+  answer, the user gets the last attempt summary.
+- Each iteration: system prompt + conversation history + tool definitions → OpenRouter → tool calls
+  (if any) → execute via registry → feed results back → repeat or finish.
+
+**OpenSearch integration (optional search layer):**
+
+- `ServiceRequestSearchService` adds keyword search over service requests, with PostgreSQL fallback
+  when OpenSearch is not available. This is used by the `search_service_requests` tool.
+
+Full backend detail: [BACKEND.md §7–§9](backend/BACKEND.md).
+
+---
 
 The assistant is available to every signed-in user, but the tool list shrinks with the role:
 
@@ -555,7 +674,7 @@ Additional rules:
 
 - The caller identity always comes from the JWT (`@AuthenticationPrincipal User`) — never from a request
   body, query parameter or AI tool argument.
-- The Ollama URL, Cloudinary and database credentials live in `backend/.env` and
+- The OpenRouter API key, Cloudinary and database credentials live in `backend/.env` and
   `application-local.properties`, both git-ignored, and stay server-side.
 - `NEXT_PUBLIC_*` values are visible to every browser — never put a secret there.
 - Error responses never leak stack traces or internal details (`GlobalExceptionHandler` maps everything).
@@ -590,19 +709,19 @@ A change is complete when:
 | Rotation | Replacing the refresh token on every use so a stolen one is single-use |
 | Agent | The backend component that drives the model, runs its tool requests and returns the answer |
 | Tool | One capability the model may request (e.g. `list_jobs`); executed against a real service |
-| Foundation model | The Ollama model the agent calls |
-| Ollama server | The self-hosted LLM runtime (e.g. on EC2) that answers the agent's chat requests |
+| Foundation model | The OpenRouter model the agent calls |
+| OpenRouter server | The OpenRouter API (https://openrouter.ai) that answers the agent's chat requests |
 | CORS | The browser rule that decides which origins may call the API (`app.cors.allowed-origins`) |
 
 ## 4.6 Current state and next steps
 
 | Area | State |
 |------|-------|
-| Backend | **Complete** — 11 packages, all endpoints, notifications, uploads, AI agent with 27 tools |
+| Backend | **Complete** — 11 packages, all endpoints, notifications, uploads, AI agent with 22 tools |
 | Backend tests | `src/test` exists but has no test classes yet |
 | Frontend — shell | **Done** — landing page, auth pages, providers, session handling, full `ui/*` library, AI chat |
 | Frontend — features | **Missing** — `/dashboard`, `/customers`, `/jobs`, `/technicians`, `/invoices`, `/payments`, `/users`, `/tasks`, and the entire customer portal (those links currently 404) |
-| AI | Agent and tools are implemented; the provider is a self-hosted **Ollama** server (see [Part 3](#part-3--ai-assistant-ollama)) |
+| AI | Agent and tools are implemented; the provider is OpenRouter (https://openrouter.ai) (see [Part 3](#part-3--ai-assistant-openrouter)) |
 
 **Suggested order of work**
 
@@ -621,7 +740,7 @@ Full frontend detail: [FRONTEND.md §10](frontend/FRONTEND.md).
 
 | Need | Document |
 |------|----------|
-| Backend packages, entities, endpoints, AI internals, Ollama config | [`backend/BACKEND.md`](backend/BACKEND.md) |
+| Backend packages, entities, endpoints, AI internals, OpenRouter config | [`backend/BACKEND.md`](backend/BACKEND.md) |
 | Frontend routes, providers, API client, UI components, known gaps | [`frontend/FRONTEND.md`](frontend/FRONTEND.md) |
 
 ---
