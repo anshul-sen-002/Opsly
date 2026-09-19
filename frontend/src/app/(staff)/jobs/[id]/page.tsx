@@ -72,6 +72,12 @@ export default function JobDetailPage() {
                 <JobStatusBadge status={job.status} />
               </h1>
               <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{job.customerName}</p>
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <Wrench className="size-3.5 shrink-0 text-indigo-500 dark:text-indigo-400" />
+                {job.technicianName
+                  ? `Assigned to ${job.technicianName}`
+                  : "Technician not assigned yet"}
+              </p>
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 interface ModalProps {
@@ -12,8 +13,9 @@ interface ModalProps {
 
 export function Modal({ open, onClose, children, className }: ModalProps) {
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+  // Portal to <body>: overlay topbar/sidebar ko bhi blur/dim kare (paint-order safe)
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
         onClick={onClose}
@@ -39,6 +41,7 @@ export function Modal({ open, onClose, children, className }: ModalProps) {
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

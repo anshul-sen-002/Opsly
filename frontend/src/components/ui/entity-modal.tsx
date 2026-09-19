@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Avatar } from "./avatar";
 import { Button } from "./button";
 import { cn } from "@/lib/utils";
@@ -55,8 +56,10 @@ export function EntityModal({
 }: EntityModalProps) {
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+  // Portal to <body>: overlay har stacking-context/backdrop-filter paint bug se
+  // bachta hai aur poore viewport (topbar + sidebar included) ko blur/dim karta hai.
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]" onClick={loading ? undefined : onClose} aria-hidden />
       <div
         role="dialog"
@@ -116,7 +119,8 @@ export function EntityModal({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
