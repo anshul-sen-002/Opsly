@@ -177,15 +177,22 @@ technicians from the staff screen.
 ## 1.5 Configuration and secrets
 
 No secret is ever stored in a committed file. `application.properties` (committed) contains only
-`${ENV_VAR}` placeholders and activates the `local` profile; the real values live in
-`application-local.properties` (git-ignored) or in the environment.
+`${ENV_VAR}` placeholders; the active profile defaults to `local` but can be overridden with the
+`SPRING_PROFILES_ACTIVE` environment variable. The real values live in `backend/.env` (git-ignored,
+local dev only) or in the platform environment variables (Render / Aiven).
 
 | File | Committed? | Holds |
 |------|-----------|-------|
-| `backend/src/main/resources/application.properties` | yes | placeholders + `spring.profiles.active=local` |
+| `backend/src/main/resources/application.properties` | yes | `${ENV_VAR}` placeholders + `spring.profiles.active=${SPRING_PROFILES_ACTIVE:local}` |
+| `backend/src/main/resources/application-prod.properties` | yes | production profile overrides (Secure cookies, SameSite=None) |
 | `backend/src/main/resources/application-local.properties` | **no** | local dev values (profile `local`) |
-| `backend/.env` | **no** | the environment variables below |
+| `backend/.env` | **no** | all environment variables (local dev) |
+| `backend/.env.example` | yes | template documenting every env var |
+| `backend/Dockerfile` | yes | multi-stage Maven → JRE 17 build for Render |
+| `backend/.dockerignore` | yes | keeps the Docker build context small |
 | `frontend/.env.local` | **no** | `NEXT_PUBLIC_API_URL` (default `http://localhost:8080`) |
+| `render.yaml` (repo root) | yes | Render Blueprint — backend service + env vars |
+| `frontend/vercel.json` | yes | Vercel build configuration |
 
 **Backend environment variables**
 

@@ -425,8 +425,9 @@ placeholders — never hardcodes secrets.
 
 - **Admin bootstrap:** AdminBootstrap runs on startup. If no ADMIN exists, it creates one from
   INITIAL_ADMIN_EMAIL/INITIAL_ADMIN_PASSWORD. Idempotent — never logs credentials.
-- **Cookie security:** `app.cookie.secure=false` in local profile (plain HTTP). Set to 	rue behind
-  HTTPS. SameSite = Lax, path = /, HttpOnly = true.
+- **Cookie security:** `app.cookie.secure=false` in local profile (plain HTTP). In the `prod` profile
+  (Render HTTPS) it is set to `true` with `SameSite=None` so the Vercel frontend can send the cookie
+  cross-site. Local: SameSite = Lax, path = /, HttpOnly = true.
 - **Refresh token rotation:** on every /auth/refresh call, the old token is revoked in the DB and a
   new one issued. Logout revokes the token in the DB and clears the cookie.
 - **OpenRouter is optional:** if OPENROUTER_API_KEY is unset, the app starts normally — the AI
@@ -438,9 +439,13 @@ placeholders — never hardcodes secrets.
 
 | File | Committed? | Holds |
 |------|-----------|-------|
-| `application.properties` | yes | ${ENV_VAR} placeholders + spring.profiles.active=local |
+| `application.properties` | yes | ${ENV_VAR} placeholders + spring.profiles.active=${SPRING_PROFILES_ACTIVE:local} |
+| `application-prod.properties` | yes | prod profile overrides (Secure cookies, SameSite=None, PORT) |
 | `application-local.properties` | no | local dev values |
-| `backend/.env` | no | all environment variables |
+| `backend/.env` | no | all environment variables (local dev) |
+| `backend/.env.example` | yes | template documenting every env var |
+| `backend/Dockerfile` | yes | multi-stage Maven → JRE 17 build for Render |
+| `backend/.dockerignore` | yes | excludes target, .env, etc. from Docker build context |
 | pom.xml | yes | Maven dependencies |
 
 **Never commit or log** .env, `application-local.properties`, passwords, JWT secrets, API keys, or

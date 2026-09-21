@@ -1,0 +1,80 @@
+# ===========================================================================
+#  Render Blueprint — Opsly backend (Spring Boot on Docker)
+#  https://render.com/docs/deploy-spring-boot
+#
+#  This file defines the production backend service.
+#  Database:  Aiven managed PostgreSQL  (set the DB_* vars in the Render
+#             dashboard or environment group — they are sensitive secrets)
+#  Frontend:  Vercel  (set ALLOWED_ORIGINS to your Vercel domain below)
+#
+#  Usage:
+#    1. Fork / push to GitHub
+#    2. In Render → New + → Web Service → Connect your repo
+#       Render auto-detects render.yaml
+#    3. Fill in the SECRET env vars in the Render dashboard
+#    4. Set ALLOWED_ORIGINS to your Vercel frontend URL
+# ===========================================================================
+
+services:
+  - type: web
+    name: opsly-backend
+    runtime: docker
+    plan: free                 # upgrade as needed (starter / standard)
+    region: oregon             # choose the region closest to your users
+    dockerfilePath: backend/Dockerfile
+    healthCheckPath: /v3/api-docs   # public endpoint; 200 = healthy
+    autoDeploy: true
+
+    envVars:
+      # --- Spring profile & port (managed by Render) ----------------------
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: PORT
+        value: 8080
+
+      # --- CORS: replace with your actual Vercel frontend URL -------------
+      - key: ALLOWED_ORIGINS
+        value: https://opsly-frontend.vercel.app
+
+      # --- Database (Aiven PostgreSQL) — sensitive, set in Render dashboard -
+      #   value: <replace with actual Aiven connection string>
+      - key: DB_URL
+        value: ""
+      - key: DB_USERNAME
+        value: ""
+      - key: DB_PASSWORD
+        value: ""
+
+      # --- JWT — sensitive, set in Render dashboard -------------------------
+      - key: JWT_SECRET
+        value: ""
+      - key: JWT_EXPIRATION
+        value: "900000"
+      - key: JWT_REFRESH_EXPIRATION
+        value: "604800000"
+
+      # --- Initial admin --------------------------------------------------
+      - key: INITIAL_ADMIN_EMAIL
+        value: admin@example.com
+      - key: INITIAL_ADMIN_PASSWORD
+        value: ""
+
+      # --- AI / OpenRouter (optional) -------------------------------------
+      - key: OPENROUTER_API_KEY
+        value: ""
+      - key: OPENROUTER_MODEL
+        value: google/gemini-2.5-flash-preview-04-17
+
+      # --- Swagger ---------------------------------------------------------
+      - key: SWAGGER_UI_PATH
+        value: /swagger-ui.html
+      - key: SWAGGER_DOCS_PATH
+        value: /v3/api-docs
+
+      # --- Cloudinary (optional) ------------------------------------------
+      - key: CLOUDINARY_CLOUD_NAME
+        value: ""
+      - key: CLOUDINARY_API_KEY
+        value: ""
+      - key: CLOUDINARY_API_SECRET
+        value: ""

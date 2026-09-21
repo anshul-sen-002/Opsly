@@ -1,0 +1,16 @@
+src/test
+target
+.git
+.gitignore
+.env
+.env.*
+*.md
+Dockerfile
+.dockerignore
+.idea
+.vscode
+*.iml
+*.iws
+.mvn
+mvnw
+mvnw.cmd
