@@ -53,6 +53,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/customer/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/staff/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+                // Public health check (UptimeRobot / Render)
+                .requestMatchers("/api/health", "/api/health/").permitAll()
                 // Swagger UI (dev only)
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                 // Everything else requires a valid JWT

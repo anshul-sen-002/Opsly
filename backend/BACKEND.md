@@ -16,6 +16,7 @@ assumes you have read [`../AGENTS-1.md`](../AGENTS-1.md) first.
 - **AI:** `POST /api/ai/chat` → OpenRouter (OpenAI-compatible API) → tool calls → same services as REST
   → PostgreSQL. Browser never sees the model provider or its API key.
 - **Run it:** backend `mvn spring-boot:run` (port 8080), frontend `npm run dev` (port 3000)
+- **Deploy:** Docker on Render (`render.yaml`), frontend on Vercel, DB on Aiven. Health: `GET /api/health` (public).
 - **Tests:** backend `src/test` is empty — no test classes yet
 
 --
@@ -160,6 +161,12 @@ frontend always sees `{ success: false, message: ... }` with a sensible HTTP sta
 All endpoints are under `/api/`. The role shown is the **minimum** `@PreAuthorize` value; some
 endpoints accept `hasAnyRole(...)`. Ownership is enforced in the service layer on top of the role
 check.
+
+## Health (`/api/health`)
+
+| Method | Path | Role | Description |
+|--------|------|------|-------------|
+| GET | `/health` | public | Liveness probe → `{ "success": true, "message": "Ok", "data": "Ok" }`. Used by the Render health check and UptimeRobot to keep the backend awake. Both `/health` and `/health/` are mapped. |
 
 ## Auth (`/api/auth`)
 

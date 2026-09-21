@@ -43,6 +43,8 @@ The document is split into four parts, from "what is this" to "how do I work in 
   with a Bearer API key. When the model asks for data, the agent runs a *tool* that goes through the same
   services and the same permission checks as the REST API. See [Part 3](#part-3--ai-assistant-openrouter).
 - **Running it.** Backend: `mvn spring-boot:run` → port `8080`. Frontend: `npm run dev` → port `3000`.
+- **Deploy it.** Backend → Docker on Render (`render.yaml`); frontend → Vercel; DB → Aiven.
+  Health check: `GET /api/health` (no auth, used by Render + UptimeRobot).
 - **Current status.** The backend is complete. The frontend has the shell (landing page, login pages,
   component library) but the dashboard/list pages are still to be built — see
   [4.6](#46-current-state-and-next-steps).
@@ -413,6 +415,7 @@ reads them.
 
 ```
 AUTH          POST /api/auth/customer/register | /customer/login | /staff/login | /refresh | /logout
+HEALTH        GET  /api/health
 AI            POST /api/ai/chat
 DASHBOARD     GET  /api/dashboard/summary
 STAFF         POST|GET /api/admin/staff · GET|PUT /api/admin/staff/{id}

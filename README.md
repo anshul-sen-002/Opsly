@@ -78,6 +78,31 @@ npm run dev
 
 The frontend connects to the Spring Boot REST API through the configured API base URL.
 
+## ☁️ Deployment
+
+| Component | Platform | Notes |
+|---|---|---|
+| Backend | **Render** (Docker) | Built from `backend/Dockerfile`; service defined in `render.yaml` |
+| Frontend | **Vercel** | Set `NEXT_PUBLIC_API_URL` to the Render backend URL |
+| Database | **Aiven** (PostgreSQL) | Managed Postgres — the JDBC URL must include `?sslmode=require` |
+
+Backend environment variables are listed in `backend/.env.example`; set the real values in the
+Render dashboard (`JWT_SECRET`, `DB_*`, `ALLOWED_ORIGINS`, …).
+
+## 💚 Health Check
+
+`GET /api/health` is a **public** endpoint (no authentication) that always returns `200 Ok`.
+Render uses it as the service health check, and an uptime monitor such as **UptimeRobot** can ping
+it to keep the free-tier backend awake.
+
+```bash
+curl https://<your-backend>.onrender.com/api/health
+# {"success":true,"message":"Ok","data":"Ok"}
+```
+
+Point UptimeRobot at `https://<your-backend>.onrender.com/api/health` — HTTP `200` means the
+backend is up.
+
 ## 🤖 AI Assistant
 
 Opsly's AI assistant can answer operational questions using authenticated backend tools.

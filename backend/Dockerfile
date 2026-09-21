@@ -26,11 +26,11 @@ WORKDIR /app
 # Copy the Spring Boot jar from the build stage
 COPY --from=build /build/target/opsly-backend-*.jar app.jar
 
-# Render sets the PORT env var; Spring Boot reads it via server.port=${PORT:8080}
-# Default to port 8080 if PORT is not set (e.g. local `docker run`)
+# Render sets the PORT env var; Spring Boot reads it via server.port=${PORT:8082}
+# Default to port 8082 if PORT is not set (e.g. local `docker run`)
 ENV SPRING_PROFILES_ACTIVE=prod \
-    PORT=8080
+    PORT=8082
 
-EXPOSE 8080
+EXPOSE 8082
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

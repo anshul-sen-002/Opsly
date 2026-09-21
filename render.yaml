@@ -22,7 +22,7 @@ services:
     plan: free                 # upgrade as needed (starter / standard)
     region: oregon             # choose the region closest to your users
     dockerfilePath: backend/Dockerfile
-    healthCheckPath: /v3/api-docs   # public endpoint; 200 = healthy
+    healthCheckPath: /api/health
     autoDeploy: true
 
     envVars:
@@ -30,7 +30,7 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: PORT
-        value: 8080
+        value: 8082
 
       # --- CORS: replace with your actual Vercel frontend URL -------------
       - key: ALLOWED_ORIGINS
