@@ -30,12 +30,15 @@ export interface AuthResponse {
   role: Role;
   userId: number;
   email: string;
+  /** Cloudinary profile image URL — lets the shell render the real photo on login/refresh */
+  profileImageUrl?: string | null;
 }
 
 export interface AuthUser {
   userId: number;
   email: string;
   role: Role;
+  profileImageUrl?: string | null;
 }
 
 /** GET /api/admin/staff list item â€” User entity has no name field */
@@ -208,6 +211,10 @@ export interface Customer {
   hasLoginAccount: boolean;
   /** Id of the linked login account — null when the customer has no login */
   userId?: number | null;
+  /** Status of the linked login account — null when the customer has no login */
+  loginStatus?: "ACTIVE" | "INACTIVE" | null;
+  /** true when the linked login account is soft-deleted */
+  loginDeleted?: boolean;
   /** Cloudinary profile image of the linked login account */
   profileImageUrl?: string | null;
   deleted: boolean;
@@ -219,7 +226,7 @@ export interface Customer {
 export interface CustomerInput {
   name: string;
   phone: string;
-  email?: string;
+  email: string;
   companyName?: string;
   address?: string;
   city?: string;

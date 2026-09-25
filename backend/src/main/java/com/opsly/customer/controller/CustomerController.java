@@ -6,6 +6,7 @@ import com.opsly.customer.dto.CustomerResponse;
 import com.opsly.customer.dto.GrantPortalAccessRequest;
 import com.opsly.customer.service.CustomerService;
 import com.opsly.user.entity.User;
+import com.opsly.user.entity.UserStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -105,5 +106,22 @@ public class CustomerController {
             @PathVariable Long id,
             @Valid @RequestBody GrantPortalAccessRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Portal access granted", customerService.grantPortalAccess(id, request)));
+    }
+
+    /**
+     * ADMIN/MANAGER: suspend or reactivate the portal login linked to a customer.
+     *
+     * PUT /api/customers/{id}/login-status?status=INACTIVE | ACTIVE
+     *
+     * Only flips the linked users.status — the soft-delete flag belongs to
+     * delete/restore, so suspend is not the same thing as delete.
+     */
+    @PutMapping("/{id}/login-status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<CustomerResponse>> updateLoginStatus(
+            @PathVariable Long id,
+            @RequestParam UserStatus status) {
+        return ResponseEntity.ok(ApiResponse.success("Portal access updated",
+                customerService.updateLoginStatus(id, status)));
     }
 }

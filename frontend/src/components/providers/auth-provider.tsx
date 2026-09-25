@@ -37,6 +37,11 @@ interface AuthContextValue {
   registerCustomer: (input: RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
+  /**
+   * Patch the cached session user's profile image. Called right after a photo
+   * upload so the topbar avatar updates without waiting for a re-login.
+   */
+  setProfileImageUrl: (url: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -87,7 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const applyAuth = useCallback(
     (auth: AuthResponse) => {
-      const nextUser: AuthUser = { userId: auth.userId, email: auth.email, role: auth.role };
+      const nextUser: AuthUser = {
+        userId: auth.userId,
+        email: auth.email,
+        role: auth.role,
+        profileImageUrl: auth.profileImageUrl ?? null,
+      };
       tokenRef.current = auth.accessToken;
       userRef.current = nextUser;
       setAccessToken(auth.accessToken);
@@ -192,6 +202,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return ok;
   }, []);
 
+  // Keep the cached session user in step with a freshly uploaded photo so any
+  // shell avatar (e.g. the topbar account button) re-renders immediately.
+  const setProfileImageUrl = useCallback((url: string | null) => {
+    const current = userRef.current;
+    if (!current) return;
+    const nextUser: AuthUser = { ...current, profileImageUrl: url };
+    userRef.current = nextUser;
+    setUser(nextUser);
+    try {
+      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(nextUser));
+    } catch {
+      // storage unavailable — session lives in memory only
+    }
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -203,6 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       registerCustomer,
       logout,
       refreshSession,
+      setProfileImageUrl,
     }),
     [
       status,
@@ -214,6 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       registerCustomer,
       logout,
       refreshSession,
+      setProfileImageUrl,
     ]
   );
 

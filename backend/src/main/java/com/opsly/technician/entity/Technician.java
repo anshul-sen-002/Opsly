@@ -4,7 +4,7 @@ import com.opsly.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Technician represents the business profile of a staff member who performs services.
@@ -40,19 +40,19 @@ public class Technician {
     private User user;
 
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    @Column(nullable = false, columnDefinition = "timestamp with time zone")
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 }

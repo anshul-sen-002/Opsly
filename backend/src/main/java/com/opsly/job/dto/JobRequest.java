@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -15,5 +15,5 @@ public class JobRequest {
     @NotBlank(message = "Description is required")
     private String description;
 
-    private LocalDateTime scheduledAt;
+    private Instant scheduledAt;
 }

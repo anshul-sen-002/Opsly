@@ -30,12 +30,15 @@ export interface AuthResponse {
   role: Role;
   userId: number;
   email: string;
+  /** Cloudinary profile image URL — lets the shell render the real photo on login/refresh */
+  profileImageUrl?: string | null;
 }
 
 export interface AuthUser {
   userId: number;
   email: string;
   role: Role;
+  profileImageUrl?: string | null;
 }
 
 /** GET /api/admin/staff list item â€” User entity has no name field */
@@ -218,7 +221,7 @@ export interface Customer {
 export interface CustomerInput {
   name: string;
   phone: string;
-  email?: string;
+  email: string;
   companyName?: string;
   address?: string;
   city?: string;

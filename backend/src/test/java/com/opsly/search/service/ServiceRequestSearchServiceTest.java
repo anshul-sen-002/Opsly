@@ -11,7 +11,7 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,7 +53,7 @@ class ServiceRequestSearchServiceTest {
         j.setCustomerName(customer);
         j.setCustomerId(id * 10);
         j.setStatus(JobStatus.valueOf(status));
-        j.setScheduledAt(LocalDateTime.now());
+        j.setScheduledAt(Instant.now());
         return j;
     }
 

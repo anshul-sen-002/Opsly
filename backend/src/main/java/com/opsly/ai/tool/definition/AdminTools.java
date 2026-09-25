@@ -110,7 +110,7 @@ public class AdminTools {
     }
 
     private String execDeactivateStaff(JsonNode args, User caller) {
-        StaffResponse r = adminService.deactivateStaff(Schema.getLong(args, "staff_id"));
+        StaffResponse r = adminService.deactivateStaff(Schema.getLong(args, "staff_id"), caller.getRole());
         return String.format("Staff #%d deactivated. Email: %s | Status: %s", r.getId(), r.getEmail(), r.getStatus());
     }
 }

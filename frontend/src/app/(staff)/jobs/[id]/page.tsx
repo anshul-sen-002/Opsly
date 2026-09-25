@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { JobStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { ErrorState, DetailSkeleton } from "@/components/ui/states";
 import { ApiError, jobApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import type { Job } from "@/types";
@@ -43,7 +43,7 @@ export default function JobDetailPage() {
 
   const actions = useJobActions(load);
 
-  if (loading) return <PageLoader />;
+  if (loading) return <DetailSkeleton label="Loading job" />;
   if (error || !job) {
     return <ErrorState title="Could not load job" message={error ?? undefined} onRetry={() => void load()} />;
   }

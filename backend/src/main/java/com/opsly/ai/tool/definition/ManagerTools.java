@@ -75,14 +75,14 @@ public class ManagerTools {
         Map<String, ObjectNode> props = new LinkedHashMap<>();
         props.put("name",         Schema.string(mapper, "Customer full name"));
         props.put("phone",        Schema.string(mapper, "Phone number"));
-        props.put("email",        Schema.string(mapper, "Email address (optional)"));
+        props.put("email",        Schema.string(mapper, "Email address (required — used for portal login and invoices)"));
         props.put("company_name", Schema.string(mapper, "Company name (optional)"));
         props.put("address",      Schema.string(mapper, "Address (optional)"));
         props.put("city",         Schema.string(mapper, "City (optional)"));
         return new ToolDefinition(
                 "create_customer",
                 "Create a customer record without a login account. Use grant_portal_access to add login later.",
-                Schema.object(mapper, props, List.of("name", "phone")),
+                Schema.object(mapper, props, List.of("name", "phone", "email")),
                 ADMIN_MANAGER,
                 this::execCreateCustomer
         );
@@ -92,7 +92,7 @@ public class ManagerTools {
         CustomerRequest req = new CustomerRequest();
         req.setName(Schema.getString(args, "name"));
         req.setPhone(Schema.getString(args, "phone"));
-        req.setEmail(Schema.getStringOrNull(args, "email"));
+        req.setEmail(Schema.getString(args, "email"));
         req.setCompanyName(Schema.getStringOrNull(args, "company_name"));
         req.setAddress(Schema.getStringOrNull(args, "address"));
         req.setCity(Schema.getStringOrNull(args, "city"));
@@ -149,14 +149,14 @@ public class ManagerTools {
         props.put("customer_id",  Schema.integer(mapper, "The customer ID to update"));
         props.put("name",         Schema.string(mapper, "Customer full name"));
         props.put("phone",        Schema.string(mapper, "Phone number"));
-        props.put("email",        Schema.string(mapper, "Email address (optional)"));
+        props.put("email",        Schema.string(mapper, "Email address (required — used for portal login and invoices)"));
         props.put("company_name", Schema.string(mapper, "Company name (optional)"));
         props.put("address",      Schema.string(mapper, "Address (optional)"));
         props.put("city",         Schema.string(mapper, "City (optional)"));
         return new ToolDefinition(
                 "update_customer",
                 "Update an existing customer record. Supply all fields, not just changed ones.",
-                Schema.object(mapper, props, List.of("customer_id", "name", "phone")),
+                Schema.object(mapper, props, List.of("customer_id", "name", "phone", "email")),
                 ADMIN_MANAGER,
                 this::execUpdateCustomer
         );
@@ -166,7 +166,7 @@ public class ManagerTools {
         CustomerRequest req = new CustomerRequest();
         req.setName(Schema.getString(args, "name"));
         req.setPhone(Schema.getString(args, "phone"));
-        req.setEmail(Schema.getStringOrNull(args, "email"));
+        req.setEmail(Schema.getString(args, "email"));
         req.setCompanyName(Schema.getStringOrNull(args, "company_name"));
         req.setAddress(Schema.getStringOrNull(args, "address"));
         req.setCity(Schema.getStringOrNull(args, "city"));

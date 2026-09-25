@@ -11,7 +11,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { EntityFormShell } from "@/components/ui/entity-form";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { ErrorState, FormSkeleton } from "@/components/ui/states";
 import { ApiError, invoiceApi, paymentApi } from "@/lib/api";
 import { formatCurrency, signalNotificationsChanged } from "@/lib/utils";
 import type { Invoice } from "@/types";
@@ -106,7 +106,7 @@ function NewPaymentPageContent() {
     }
   };
 
-  if (loading) return <PageLoader />;
+  if (loading) return <FormSkeleton label="Loading payment form" fields={4} />;
 
   if (loadError) {
     return <ErrorState title="Could not load invoices" message={loadError} onRetry={() => void loadInvoices()} />;

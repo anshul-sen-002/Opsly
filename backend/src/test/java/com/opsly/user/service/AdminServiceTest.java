@@ -2,11 +2,15 @@ package com.opsly.user.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 
+import com.opsly.common.exception.ForbiddenException;
 import com.opsly.technician.entity.Technician;
 import com.opsly.technician.repository.TechnicianRepository;
 import com.opsly.user.dto.StaffResponse;
@@ -15,6 +19,7 @@ import com.opsly.user.entity.User;
 import com.opsly.user.entity.UserStatus;
 import com.opsly.user.repository.UserRepository;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -87,5 +92,64 @@ class AdminServiceTest {
 
         org.junit.jupiter.api.Assertions.assertTrue(result.isEmpty());
         org.mockito.Mockito.verify(technicianRepository, never()).findByUserIn(anyCollection());
+    }
+
+    // --- Status change (activate/deactivate) --------------------------------
+
+    @Test
+    void managerCanActivateTechnician() {
+        User tech = User.builder()
+                .email("tech2@example.com").password("x").role(Role.TECHNICIAN).status(UserStatus.INACTIVE)
+                .build();
+        org.springframework.test.util.ReflectionTestUtils.setField(tech, "id", 10L);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(tech));
+        when(userRepository.save(tech)).thenReturn(tech);
+
+        StaffResponse response = adminService.activateStaff(10L, Role.MANAGER);
+
+        assertEquals(UserStatus.ACTIVE, response.getStatus());
+        verify(userRepository).save(tech);
+    }
+
+    @Test
+    void managerCannotDeactivateManagerAccount() {
+        User otherManager = User.builder()
+                .email("mgr@example.com").password("x").role(Role.MANAGER).status(UserStatus.ACTIVE)
+                .build();
+        org.springframework.test.util.ReflectionTestUtils.setField(otherManager, "id", 11L);
+        when(userRepository.findById(11L)).thenReturn(Optional.of(otherManager));
+
+        ForbiddenException ex = assertThrows(ForbiddenException.class,
+                () -> adminService.deactivateStaff(11L, Role.MANAGER));
+
+        assertTrue(ex.getMessage().contains("Technician"));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void managerCannotActivateAdminAccount() {
+        User admin = User.builder()
+                .email("admin2@example.com").password("x").role(Role.ADMIN).status(UserStatus.INACTIVE)
+                .build();
+        org.springframework.test.util.ReflectionTestUtils.setField(admin, "id", 12L);
+        when(userRepository.findById(12L)).thenReturn(Optional.of(admin));
+
+        assertThrows(ForbiddenException.class, () -> adminService.activateStaff(12L, Role.MANAGER));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void adminCanDeactivateAnyStaffAccount() {
+        User target = User.builder()
+                .email("mgr2@example.com").password("x").role(Role.MANAGER).status(UserStatus.ACTIVE)
+                .build();
+        org.springframework.test.util.ReflectionTestUtils.setField(target, "id", 13L);
+        when(userRepository.findById(13L)).thenReturn(Optional.of(target));
+        when(userRepository.save(target)).thenReturn(target);
+
+        StaffResponse response = adminService.deactivateStaff(13L, Role.ADMIN);
+
+        assertEquals(UserStatus.INACTIVE, response.getStatus());
+        verify(userRepository).save(target);
     }
 }

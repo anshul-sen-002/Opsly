@@ -5,7 +5,7 @@ import com.opsly.technician.entity.Technician;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Job represents the complete service lifecycle from customer request to final closure.
@@ -48,22 +48,22 @@ public class Job {
     private String description;
 
     // Optional scheduled date/time for the service
-    private LocalDateTime scheduledAt;
+    private Instant scheduledAt;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(nullable = false, updatable = false, columnDefinition = "timestamp with time zone")
+    private Instant createdAt;
 
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    @Column(nullable = false, columnDefinition = "timestamp with time zone")
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 }

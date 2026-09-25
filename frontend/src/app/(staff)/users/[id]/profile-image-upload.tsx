@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { ApiError, userProfileApi } from "@/lib/api";
@@ -26,6 +27,7 @@ export function ProfileImageUpload({
   className?: string;
 }) {
   const toast = useToast();
+  const { setProfileImageUrl } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -43,6 +45,8 @@ export function ProfileImageUpload({
     try {
       const updated = await userProfileApi.uploadProfileImage(file);
       onUpdated(updated);
+      // Sync the session so the topbar avatar reflects the new photo at once
+      setProfileImageUrl(updated.profileImageUrl ?? null);
       toast.success("Profile photo updated", "Your new photo is now visible.");
     } catch (err) {
       toast.error("Upload failed", err instanceof ApiError ? err.message : "Unexpected error");

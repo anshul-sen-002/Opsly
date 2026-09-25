@@ -17,7 +17,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,15 +64,16 @@ public class CustomerTools {
 
     private String execCreateJobRequest(JsonNode args, User caller) {
         // Derive the Customer record from the authenticated user — never trust a client-supplied ID
-        Customer customer = customerRepository.findByUser(caller)
-                .orElseThrow(() -> new IllegalStateException("No customer profile linked to your account. Contact support."));
+        Customer customer = customerRepository.findByUserAndDeletedFalse(caller)
+                .filter(c -> caller.isEnabled())
+                .orElseThrow(() -> new IllegalStateException("No active customer profile linked to your account. Contact support."));
 
         JobRequest req = new JobRequest();
         req.setCustomerId(customer.getId());
         req.setDescription(Schema.getString(args, "description"));
 
         String scheduledStr = Schema.getStringOrNull(args, "scheduled_at");
-        if (scheduledStr != null) req.setScheduledAt(LocalDateTime.parse(scheduledStr));
+        if (scheduledStr != null) req.setScheduledAt(Instant.parse(scheduledStr));
 
         JobResponse r = jobService.createJob(req);
         return String.format(
@@ -93,8 +95,9 @@ public class CustomerTools {
 
     private String execMyJobRequests(JsonNode args, User caller) {
         // Customers do not have a my-jobs endpoint in JobService — we use a customer-scoped query
-        Customer customer = customerRepository.findByUser(caller)
-                .orElseThrow(() -> new IllegalStateException("No customer profile linked to your account."));
+        Customer customer = customerRepository.findByUserAndDeletedFalse(caller)
+                .filter(c -> caller.isEnabled())
+                .orElseThrow(() -> new IllegalStateException("No active customer profile linked to your account."));
 
         Page<JobResponse> page = jobService.getJobsByCustomer(customer.getId(), PageRequest.of(0, 50));
         if (page.isEmpty()) return "You have no service requests yet.";
@@ -124,8 +127,9 @@ public class CustomerTools {
     }
 
     private String execGetMyJob(JsonNode args, User caller) {
-        Customer customer = customerRepository.findByUser(caller)
-                .orElseThrow(() -> new IllegalStateException("No customer profile linked to your account."));
+        Customer customer = customerRepository.findByUserAndDeletedFalse(caller)
+                .filter(c -> caller.isEnabled())
+                .orElseThrow(() -> new IllegalStateException("No active customer profile linked to your account."));
 
         JobResponse j = jobService.getJobById(Schema.getLong(args, "job_id"));
 

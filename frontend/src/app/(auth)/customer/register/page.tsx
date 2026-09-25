@@ -11,6 +11,7 @@ import { AuthFormHeader } from "@/components/auth-form";
 import { Button } from "@/components/ui/button";
 import { Input, PasswordInput } from "@/components/ui/input";
 import { ApiError } from "@/lib/api";
+import { isValidPhone, PHONE_ERROR_MESSAGE } from "@/lib/validation";
 import { Mail, Phone, User } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 
@@ -21,7 +22,11 @@ const registerSchema = z
       .string()
       .min(1, "Email is required")
       .email("Enter a valid email address"),
-    phone: z.string().min(1, "Phone is required"),
+    phone: z
+      .string()
+      .trim()
+      .min(1, "Phone is required")
+      .refine(isValidPhone, { message: PHONE_ERROR_MESSAGE }),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
@@ -110,6 +115,7 @@ export default function CustomerRegisterPage() {
         />
         <Input
           label="Email address"
+          required
           type="email"
           autoComplete="email"
           placeholder="you@example.com"

@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -22,6 +22,6 @@ public class InvoiceResponse {
     private InvoiceStatus status;
     private LocalDate issuedAt;
     private LocalDate dueDate;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     private String fileUrl;
 }

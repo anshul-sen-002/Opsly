@@ -1,7 +1,9 @@
 package com.opsly.auth.dto;
 
+import com.opsly.common.validation.PhonePatterns;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,5 +27,6 @@ public class CustomerRegisterRequest {
 
     // Optional phone for Customer profile
     @NotBlank(message = "Phone is required")
+    @Pattern(regexp = PhonePatterns.REQUIRED, message = PhonePatterns.MESSAGE)
     private String phone;
 }

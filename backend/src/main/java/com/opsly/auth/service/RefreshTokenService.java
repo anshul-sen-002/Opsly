@@ -3,6 +3,7 @@ package com.opsly.auth.service;
 import com.opsly.common.exception.BadRequestException;
 import com.opsly.user.entity.RefreshToken;
 import com.opsly.user.entity.User;
+import com.opsly.user.entity.UserStatus;
 import com.opsly.user.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,7 +47,8 @@ public class RefreshTokenService {
 
     /**
      * Validates a refresh token string.
-     * Throws BadRequestException if not found, revoked, or expired.
+     * Throws BadRequestException if not found, revoked, expired, or if the
+     * account behind it is no longer allowed (deleted or INACTIVE).
      */
     public RefreshToken validateRefreshToken(String tokenString) {
         RefreshToken token = refreshTokenRepository.findByToken(tokenString)
@@ -58,6 +60,15 @@ public class RefreshTokenService {
 
         if (token.getExpiresAt().isBefore(Instant.now())) {
             throw new BadRequestException("Refresh token has expired");
+        }
+
+        // An account is allowed only when it is ACTIVE and NOT deleted.
+        // Without this check a deleted or deactivated account could keep minting
+        // fresh access tokens for the whole refresh-token lifetime (7 days).
+        User user = token.getUser();
+        if (user.isDeleted() || user.getStatus() != UserStatus.ACTIVE) {
+            revokeToken(tokenString);
+            throw new BadRequestException("This account is no longer active");
         }
 
         return token;

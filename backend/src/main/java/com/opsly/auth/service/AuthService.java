@@ -100,6 +100,7 @@ public class AuthService {
                 .role(user.getRole().name())
                 .userId(user.getId())
                 .email(user.getEmail())
+                .profileImageUrl(user.getProfileImageUrl())
                 .build();
     }
 

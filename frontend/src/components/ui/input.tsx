@@ -33,6 +33,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className={cn(
               "block w-full rounded-xl border bg-white px-4 py-3 text-[15px] text-slate-900 shadow-[0_1px_2px_rgba(16,24,40,0.04)] outline-none transition placeholder:text-slate-400 dark:bg-slate-950/40 dark:text-slate-100",
               "focus:ring-2",
+              "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 disabled:opacity-75 disabled:hover:border-slate-200 dark:disabled:bg-slate-900/60 dark:disabled:text-slate-400 dark:disabled:hover:border-slate-700",
               icon && "pl-11",
               error
                 ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/25"
@@ -74,6 +75,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
             className={cn(
               "block w-full rounded-xl border bg-white px-4 py-3 pr-20 text-[15px] text-slate-900 shadow-[0_1px_2px_rgba(16,24,40,0.04)] outline-none transition placeholder:text-slate-400 dark:bg-slate-950/40 dark:text-slate-100",
               "focus:ring-2",
+              "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 disabled:opacity-75 disabled:hover:border-slate-200 dark:disabled:bg-slate-900/60 dark:disabled:text-slate-400 dark:disabled:hover:border-slate-700",
               icon && "pl-11",
               error
                 ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/25"

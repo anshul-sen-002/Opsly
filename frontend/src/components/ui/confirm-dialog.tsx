@@ -2,14 +2,22 @@
 
 import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/components/providers/toast-provider";
 import { EntityModal, type EntityModalTone, type EntityModalUser } from "./entity-modal";
 
 type ConfirmVariant = "danger" | "warning" | "primary";
 
+/** Success toast fired by the dialog AFTER it has closed */
+export interface ConfirmToastPayload {
+  title: string;
+  description?: string;
+}
+
 interface ConfirmDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => void | Promise<void>;
+  /** Run the API call — return a toast payload to show after the modal closes */
+  onConfirm: () => void | ConfirmToastPayload | Promise<void | ConfirmToastPayload>;
   title: string;
   message: string;
   confirmLabel?: string;
@@ -40,8 +48,12 @@ const DEFAULT_LABELS: Record<ConfirmVariant, string> = {
  * Reusable confirmation modal for destructive or state-changing actions
  * (delete, activate/deactivate, restore...).
  *
- * Pass an async onConfirm — the dialog manages its own pending state and
- * closes on success. Errors must be handled by the caller (e.g. toast).
+ * Close-first contract: async onConfirm performs the API call and RETURNS an
+ * optional toast payload { title, description } instead of toasting itself.
+ * The dialog manages its own pending state, calls onClose() first, and only
+ * then fires the success toast — so the order is always API → modal close →
+ * toast. On error, onConfirm should toast the error and rethrow; the dialog
+ * keeps itself open (errors are surfaced by the caller above the modal).
  */
 export function ConfirmDialog({
   open,
@@ -58,12 +70,18 @@ export function ConfirmDialog({
   disabled,
 }: ConfirmDialogProps) {
   const [pending, setPending] = useState(false);
+  const toast = useToast();
 
   const handleConfirm = async () => {
     setPending(true);
     try {
-      await onConfirm();
+      const success = await onConfirm();
+      // Modal closes FIRST, then the success toast fires — one batched
+      // commit, so the toast never renders while the modal is still up.
       onClose();
+      if (success) toast.success(success.title, success.description);
+    } catch {
+      // Error already toasted by the caller — keep the dialog open for retry.
     } finally {
       setPending(false);
     }

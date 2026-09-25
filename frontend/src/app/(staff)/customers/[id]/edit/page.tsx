@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { ErrorState, FormSkeleton } from "@/components/ui/states";
 import { customerApi, ApiError } from "@/lib/api";
 import type { Customer } from "@/types";
 import { CustomerForm } from "../../customer-form";
@@ -36,7 +36,7 @@ export default function EditCustomerPage() {
     };
   }, [params.id]);
 
-  if (loading) return <PageLoader />;
+  if (loading) return <FormSkeleton label="Loading customer form" />;
   if (error || !customer) return <ErrorState title="Could not load customer" message={error ?? undefined} />;
   if (customer.deleted) {
     return (

@@ -26,10 +26,11 @@ import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { DeletedBadge, InvoiceStatusBadge, JobStatusBadge, RoleBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EmptyState, ErrorState, PageLoader } from "@/components/ui/states";
+import { EmptyState, ErrorState, ProfileSkeleton } from "@/components/ui/states";
 import { ApiError, customerApi, invoiceApi, jobApi } from "@/lib/api";
 import { cn, formatCurrency, formatLongDate } from "@/lib/utils";
 import type { Customer, Invoice, Job } from "@/types";
+import { StatusToggle } from "../users/user-ui";
 import { useCustomerActions } from "./customer-actions";
 import { GrantAccessDialog } from "./grant-access-dialog";
 
@@ -184,10 +185,27 @@ export function CustomerDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <PageLoader />;
+  if (loading) return <ProfileSkeleton label="Loading customer" />;
   if (error || !customer) {
     return <ErrorState title="Could not load customer" message={error ?? undefined} />;
   }
+
+  // Linked auth-account state — suspend/reactivate flips users.status only
+  const hasLogin = customer.hasLoginAccount && !customer.loginDeleted;
+  const loginActive = hasLogin && customer.loginStatus === "ACTIVE";
+  const portalStatusText = !customer.hasLoginAccount
+    ? "No login"
+    : customer.loginDeleted
+      ? "Login deleted"
+      : customer.loginStatus === "ACTIVE"
+        ? "Login active"
+        : "Login suspended";
+  const portalStatusDot = loginActive
+    ? "bg-emerald-500"
+    : customer.hasLoginAccount && !customer.loginDeleted
+      ? "bg-amber-500"
+      : "bg-slate-400";
+  const portalToggleDisabled = !hasLogin || customer.deleted;
 
   const activeRequests = jobs.filter(
     (job) => job.status === "ASSIGNED" || job.status === "IN_PROGRESS"
@@ -335,14 +353,9 @@ export function CustomerDetail() {
                       <RoleBadge role="CUSTOMER" />
                     </InfoRow>
                     <InfoRow label="Portal Access">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className={cn(
-                            "size-2 rounded-full",
-                            customer.hasLoginAccount ? "bg-emerald-500" : "bg-slate-400"
-                          )}
-                        />
-                        {customer.hasLoginAccount ? "Login enabled" : "No login"}
+                      <span className="inline-flex items-center gap-2">
+                        <span className={cn("size-2 rounded-full", portalStatusDot)} />
+                        {portalStatusText}
                       </span>
                     </InfoRow>
                     <InfoRow label="Joined On">{formatLongDate(customer.createdAt)}</InfoRow>
@@ -476,13 +489,8 @@ export function CustomerDetail() {
                   </InfoRow>
                   <InfoRow label="Portal Access">
                     <span className="inline-flex items-center gap-1.5">
-                      <span
-                        className={cn(
-                          "size-2 rounded-full",
-                          customer.hasLoginAccount ? "bg-emerald-500" : "bg-slate-400"
-                        )}
-                      />
-                      {customer.hasLoginAccount ? "Login enabled" : "No login"}
+                      <span className={cn("size-2 rounded-full", portalStatusDot)} />
+                      {portalStatusText}
                     </span>
                   </InfoRow>
                   <InfoRow label="Joined On">{formatLongDate(customer.createdAt)}</InfoRow>
@@ -543,12 +551,37 @@ export function CustomerDetail() {
         <div className="space-y-5 xl:col-span-1 xl:self-start">
           <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-2">
-              <span className={cn("size-2 rounded-full", customer.deleted ? "bg-slate-400" : "bg-emerald-500")} />
+              <span
+                className={cn(
+                  "size-2 rounded-full",
+                  customer.deleted
+                    ? "bg-slate-400"
+                    : customer.loginStatus === "INACTIVE"
+                      ? "bg-rose-500"
+                      : "bg-emerald-500"
+                )}
+              />
               <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                {customer.deleted ? "Deleted" : "Active"}
+                {customer.deleted
+                  ? "Deleted"
+                  : customer.loginStatus === "INACTIVE"
+                    ? "Inactive"
+                    : "Active"}
               </span>
             </div>
-            <span className="text-xs text-slate-400 dark:text-slate-500">Status</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs text-slate-400 dark:text-slate-500">Status</span>
+              <StatusToggle
+                checked={loginActive}
+                disabled={portalToggleDisabled}
+                onChange={() =>
+                  actions.request(
+                    loginActive ? "suspend-login" : "reactivate-login",
+                    customer
+                  )
+                }
+              />
+            </div>
           </div>
 
           <InfoCard icon={Activity} title="At a Glance">

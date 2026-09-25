@@ -28,12 +28,13 @@ export function useInvoiceActions(onUpdated: () => void | Promise<unknown>) {
     async (invoice: Invoice) => {
       try {
         const updated = await invoiceApi.issue(invoice.id);
-        toast.success(
-          `Invoice ${updated.invoiceNumber} issued`,
-          "The invoice is now payable and payments can be recorded."
-        );
         signalNotificationsChanged();
         await onUpdated();
+        // Close-first contract: ConfirmDialog fires this toast AFTER closing.
+        return {
+          title: `Invoice ${updated.invoiceNumber} issued`,
+          description: "The invoice is now payable and payments can be recorded.",
+        };
       } catch (err) {
         toast.error("Could not issue invoice", err instanceof ApiError ? err.message : "Unexpected error");
         throw err;

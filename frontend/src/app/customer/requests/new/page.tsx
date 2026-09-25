@@ -1,6 +1,6 @@
 "use client";
 
-import { Briefcase, CalendarClock } from "lucide-react";
+import { Briefcase, CalendarClock, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -31,6 +31,7 @@ export default function NewRequestPage() {
     register: registerField,
     handleSubmit,
     setError,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
@@ -47,6 +48,7 @@ export default function NewRequestPage() {
     try {
       const saved = await jobApi.create(input);
       setSavedJob(saved);
+      reset({ description: "", scheduledAt: "" }); // clear the form for the next request
       toast.success("Request raised", `Job #${saved.id} created successfully.`);
       signalNotificationsChanged();
     } catch (error) {
@@ -71,8 +73,8 @@ export default function NewRequestPage() {
       sectionTitle="Request Details"
       onSubmit={() => void handleSubmit(onSubmit)()}
       submitting={isSubmitting}
-      submitLabel={savedJob ? "Request submitted" : "Raise request"}
-      submitIcon={<Briefcase className="size-4" />}
+      submitLabel={savedJob ? "Submit another" : "Raise request"}
+      submitIcon={savedJob ? <CheckCircle2 className="size-4" /> : <Briefcase className="size-4" />}
       cancelHref={savedJob ? "/customer/requests" : undefined}
     >
       {formError && (

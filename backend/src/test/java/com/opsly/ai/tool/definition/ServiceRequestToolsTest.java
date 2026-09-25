@@ -19,7 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -90,7 +90,7 @@ class ServiceRequestToolsTest {
         j.setCustomerName("Customer" + customerId);
         j.setTechnicianId(techId);
         j.setDescription(desc);
-        j.setScheduledAt(LocalDateTime.now());
+        j.setScheduledAt(Instant.now());
         return j;
     }
 
@@ -131,7 +131,8 @@ class ServiceRequestToolsTest {
 
     @Test
     void customerDetailsDeniedForOtherRequest() {
-        when(customerRepository.findByUser(customerUser)).thenReturn(Optional.of(customer));
+        // Portal lookups only serve a customer profile that is not soft-deleted
+        when(customerRepository.findByUserAndDeletedFalse(customerUser)).thenReturn(Optional.of(customer));
         when(jobService.getJobByIdForCustomer(eq(2L), eq(3L)))
                 .thenThrow(new com.opsly.common.exception.ForbiddenException("You do not have access"));
         String out = registry.execute("get_service_request_details", "{\"request_id\":2}", customerUser);

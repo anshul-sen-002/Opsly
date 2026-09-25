@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -30,12 +30,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
            "WHERE p.status = :status AND p.paidAt >= :since AND p.paidAt < :until")
     BigDecimal sumAmountByStatusAndPaidAtBetween(
             @Param("status") PaymentStatus status,
-            @Param("since") LocalDateTime since,
-            @Param("until") LocalDateTime until);
+            @Param("since") Instant since,
+            @Param("until") Instant until);
 
     /** Successful payments since the given moment — bucketed per day by the dashboard service */
     @Query("SELECT p FROM Payment p WHERE p.status = :status AND p.paidAt >= :since")
-    List<Payment> findSuccessfulSince(@Param("status") PaymentStatus status, @Param("since") LocalDateTime since);
+    List<Payment> findSuccessfulSince(@Param("status") PaymentStatus status, @Param("since") Instant since);
 
     List<Payment> findTop3ByOrderByCreatedAtDesc();
 }

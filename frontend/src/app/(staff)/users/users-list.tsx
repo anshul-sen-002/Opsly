@@ -157,18 +157,21 @@ export function UsersList() {
 
   const actions = useUserActions(() => load());
 
-  // The staff endpoint has no role/search filters, so every page is fetched once
-  // and filtering runs client-side — keeps the chip counts and search exact.
+  // The staff endpoint has no role/search filters, so active and trashed
+  // records are fetched once and filtering runs client-side — keeps the chip
+  // counts and the search exact.
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const collected: Staff[] = [];
-      let current = await staffApi.list(0, FETCH_SIZE, "createdAt,desc");
-      collected.push(...current.content);
-      for (let p = 1; p < current.totalPages; p++) {
-        const next = await staffApi.list(p, FETCH_SIZE, "createdAt,desc");
-        collected.push(...next.content);
+      for (const deleted of [false, true]) {
+        const first = await staffApi.list(0, FETCH_SIZE, "createdAt,desc", deleted);
+        collected.push(...first.content);
+        for (let p = 1; p < first.totalPages; p++) {
+          const next = await staffApi.list(p, FETCH_SIZE, "createdAt,desc", deleted);
+          collected.push(...next.content);
+        }
       }
       setAllUsers(collected);
     } catch (err) {

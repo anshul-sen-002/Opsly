@@ -4,7 +4,8 @@ import com.opsly.notification.entity.Notification;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+
 
 /** API output shape for a single notification */
 @Getter
@@ -17,7 +18,7 @@ public class NotificationResponse {
     private String message;
     private String link;
     private boolean read;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     public static NotificationResponse from(Notification notification) {
         NotificationResponse response = new NotificationResponse();

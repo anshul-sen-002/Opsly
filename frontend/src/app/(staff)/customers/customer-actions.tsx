@@ -1,13 +1,17 @@
 "use client";
 
-import { RotateCcw, Trash2 } from "lucide-react";
+import { RotateCcw, ShieldCheck, ShieldOff, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useToast } from "@/components/providers/toast-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { customerApi, ApiError } from "@/lib/api";
 import type { Customer } from "@/types";
 
-export type CustomerAction = "delete" | "restore";
+export type CustomerAction =
+  | "delete"
+  | "restore"
+  | "suspend-login"
+  | "reactivate-login";
 
 interface CustomerActionState {
   action: CustomerAction;
@@ -32,6 +36,29 @@ const COPY: Record<
     variant: "primary",
     badge: "Active",
   },
+  "suspend-login": {
+    title: "Suspend portal access?",
+    message:
+      "This customer will not be able to sign in until access is reactivated. Their records stay untouched.",
+    confirmLabel: "Suspend access",
+    variant: "warning",
+    badge: "Suspended",
+  },
+  "reactivate-login": {
+    title: "Reactivate portal access?",
+    message: "This customer will be able to sign in to the portal again with their existing credentials.",
+    confirmLabel: "Reactivate",
+    variant: "primary",
+    badge: "Active",
+  },
+};
+
+/** Success toast per action — name is prefixed to the detail text */
+const TOAST_TEXT: Record<CustomerAction, { title: string; detail: string }> = {
+  delete: { title: "Customer deleted", detail: "moved to trash." },
+  restore: { title: "Customer restored", detail: "record restored." },
+  "suspend-login": { title: "Portal access suspended", detail: "sign-in disabled until reactivated." },
+  "reactivate-login": { title: "Portal access reactivated", detail: "can sign in again." },
 };
 
 /** Shared soft-delete / restore flow for the customers pages */
@@ -45,12 +72,16 @@ export function useCustomerActions(onUpdated: (customer: Customer) => void | Pro
         const updated =
           state.action === "delete"
             ? await customerApi.remove(state.customer.id)
-            : await customerApi.restore(state.customer.id);
-        toast.success(
-          state.action === "delete" ? "Customer deleted" : "Customer restored",
-          `${updated.name} — ${state.action === "delete" ? "moved to trash" : "record restored"}.`
-        );
+            : state.action === "restore"
+              ? await customerApi.restore(state.customer.id)
+              : await customerApi.updateLoginStatus(
+                  state.customer.id,
+                  state.action === "suspend-login" ? "INACTIVE" : "ACTIVE"
+                );
+        const done = TOAST_TEXT[state.action];
         await onUpdated(updated);
+        // Close-first contract: ConfirmDialog fires this toast AFTER closing.
+        return { title: done.title, description: `${updated.name} — ${done.detail}` };
       } catch (err) {
         toast.error("Action failed", err instanceof ApiError ? err.message : "Unexpected error");
         throw err;
@@ -86,7 +117,15 @@ export function useCustomerActions(onUpdated: (customer: Customer) => void | Pro
       }
       userBadge={copy?.badge}
       icon={
-        pending?.action === "delete" ? <Trash2 className="size-5" /> : <RotateCcw className="size-5" />
+        pending?.action === "delete" ? (
+          <Trash2 className="size-5" />
+        ) : pending?.action === "restore" ? (
+          <RotateCcw className="size-5" />
+        ) : pending?.action === "suspend-login" ? (
+          <ShieldOff className="size-5" />
+        ) : (
+          <ShieldCheck className="size-5" />
+        )
       }
       onConfirm={() => (pending ? run(pending) : Promise.resolve())}
     />

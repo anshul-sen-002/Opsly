@@ -4,12 +4,13 @@ import com.opsly.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * A persistent, per-user notification (e.g. "job assigned", "invoice issued").
  * Created by NotificationListener AFTER the business transaction commits.
  */
+
 @Entity
 @Table(
         name = "notifications",
@@ -50,11 +51,11 @@ public class Notification {
     @Builder.Default
     private boolean read = false;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(nullable = false, updatable = false, columnDefinition = "timestamp with time zone")
+    private Instant createdAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = Instant.now();
     }
 }

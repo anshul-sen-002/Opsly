@@ -11,7 +11,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { EntityFormShell } from "@/components/ui/entity-form";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { ErrorState, FormSkeleton } from "@/components/ui/states";
 import { ApiError, paymentApi } from "@/lib/api";
 import type { Payment } from "@/types";
 
@@ -72,7 +72,7 @@ function EditPaymentContent() {
     }
   };
 
-  if (loading) return <PageLoader />;
+  if (loading) return <FormSkeleton label="Loading payment form" fields={4} />;
   if (loadError || !payment) return <ErrorState message={loadError ?? "Payment not found."} onRetry={() => setAttempt((value) => value + 1)} />;
   return <EntityFormShell icon={<Wallet className="size-5" />} tone="emerald" title="Edit Payment"
     subtitle="Correct payment details. The linked invoice cannot be changed."

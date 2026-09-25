@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -30,15 +30,15 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
     long countByStatus(JobStatus status);
 
-    long countByCreatedAtAfter(LocalDateTime since);
+    long countByCreatedAtAfter(Instant since);
 
-    long countByCreatedAtBefore(LocalDateTime before);
+    long countByCreatedAtBefore(Instant before);
 
     List<Job> findTop4ByOrderByCreatedAtDesc();
 
     /** Jobs created since the given moment — bucketed per day by the dashboard service */
     @Query("SELECT j FROM Job j WHERE j.createdAt >= :since")
-    List<Job> findCreatedSince(@Param("since") LocalDateTime since);
+    List<Job> findCreatedSince(@Param("since") Instant since);
 
     interface StatusCountRow {
         JobStatus getStatus();
@@ -50,6 +50,6 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     List<StatusCountRow> countGroupedByStatus();
 
     @Query("SELECT j.customer.id, j.customer.name, COUNT(j) FROM Job j " +
-           "GROUP BY j.customer.id, j.customer.name ORDER BY COUNT(j) DESC")
-    List<Object[]> countJobsByCustomerTop5();
+           "GROUP BY j.customer.id, j.customer.name ORDER BY COUNT(j) DESC LIMIT 4")
+    List<Object[]> countJobsByCustomerTop4();
 }

@@ -76,11 +76,12 @@ export function useUserActions(onUpdated: (user: Staff) => void | Promise<unknow
           state.action === "activate" || state.action === "deactivate"
             ? await staffApi.getById(state.user.id).catch(() => updated)
             : updated;
-        toast.success(
-          state.action === "delete" ? "User deleted" : `User ${state.action}d`,
-          `${fresh.email} — ${state.action === "delete" ? "moved to trash" : state.action === "restore" ? "account restored" : `status is now ${fresh.status}`}.`
-        );
         await onUpdated(fresh);
+        // Close-first contract: ConfirmDialog fires this toast AFTER closing.
+        return {
+          title: state.action === "delete" ? "User deleted" : `User ${state.action}d`,
+          description: `${fresh.email} — ${state.action === "delete" ? "moved to trash" : state.action === "restore" ? "account restored" : `status is now ${fresh.status}`}.`,
+        };
       } catch (err) {
         toast.error("Action failed", err instanceof ApiError ? err.message : "Unexpected error");
         throw err;
@@ -173,8 +174,9 @@ export function useRoleChange(onUpdated: (user: Staff) => void | Promise<unknown
         phone: target.phone ?? undefined,
         specialization: target.specialization ?? undefined,
       });
-      toast.success("Role updated", `${fresh.email} — role set to ${fresh.role.toLowerCase()}.`);
+      // Close FIRST so the success toast renders after the modal is gone.
       setTarget(null);
+      toast.success("Role updated", `${fresh.email} — role set to ${fresh.role.toLowerCase()}.`);
       await onUpdated(fresh);
     } catch (err) {
       toast.error("Could not change role", err instanceof ApiError ? err.message : "Unexpected error");

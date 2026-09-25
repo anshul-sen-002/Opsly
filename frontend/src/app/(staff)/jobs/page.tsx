@@ -2,7 +2,8 @@
 
 import { Plus, RefreshCw, Wrench } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { useAuth } from "@/components/providers/auth-provider";
 import { JobStatusBadge } from "@/components/ui/badge";
@@ -29,16 +30,40 @@ const STATUS_OPTIONS: JobStatus[] = [
 /** Sentinel for the "All statuses" filter option */
 const ALL = "ALL";
 
+/** `?status=` is user-editable, so only known JobStatus values are honoured. */
+function readStatusParam(value: string | null): string {
+  return value && STATUS_OPTIONS.includes(value as JobStatus) ? value : ALL;
+}
+
 function JobsPageContent() {
   const { user } = useAuth();
   const isTechnician = user?.role === "TECHNICIAN";
   const isManager = user?.role === "ADMIN" || user?.role === "MANAGER";
 
-  const [status, setStatus] = useState<string>(ALL);
   const [page, setPage] = useState(0);
   const [data, setData] = useState<Paged<Job> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // The URL is the single source of truth for the filter: the dashboard's
+  // "Review pending work" deep link (/jobs?status=PENDING) lands pre-filtered,
+  // and the browser's back/forward buttons keep working.
+  const status = readStatusParam(searchParams.get("status"));
+
+  const setStatusFilter = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === ALL) params.delete("status");
+      else params.set("status", next);
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
   const actions = useJobActions(() => load(page, status));
 
@@ -72,7 +97,14 @@ function JobsPageContent() {
     void load(0, status);
   }, [load, status]);
 
-  const jobs = data?.content ?? [];
+  const jobs = useMemo(() => {
+    const rows = data?.content ?? [];
+    // /jobs/my-jobs has no server-side status parameter, so a technician who
+    // arrives with ?status=... gets the matching rows filtered from the page.
+    return isTechnician && status !== ALL
+      ? rows.filter((job) => job.status === status)
+      : rows;
+  }, [data, isTechnician, status]);
 
   const columns: Column<Job>[] = [
     {
@@ -157,12 +189,12 @@ function JobsPageContent() {
       />
 
       {!isTechnician && (
-        <div className="w-full overflow-hidden sm:w-auto sm:max-w-xs">
+        <div className="w-full sm:w-56">
           <Select
             label="Filter by status"
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="w-full sm:w-auto"
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="w-full"
           >
             <option value={ALL}>All statuses</option>
             {STATUS_OPTIONS.map((option) => (
@@ -182,11 +214,19 @@ function JobsPageContent() {
         ) : jobs.length === 0 ? (
           <EmptyState
             icon={Wrench}
-            title={isTechnician ? "No jobs assigned" : "No jobs yet"}
+            title={
+              isTechnician
+                ? "No jobs assigned"
+                : status === ALL
+                  ? "No jobs yet"
+                  : `No ${status.replace(/_/g, " ").toLowerCase()} jobs`
+            }
             description={
               isTechnician
                 ? "Once a manager assigns work to you it will show up here."
-                : "Create the first job to start tracking service work."
+                : status === ALL
+                  ? "Create the first job to start tracking service work."
+                  : `No jobs are currently ${status.replace(/_/g, " ").toLowerCase()}.`
             }
           />
         ) : (
@@ -213,6 +253,25 @@ function JobsPageContent() {
   );
 }
 
+/** Suspense fallback for a direct load, before the URL query has been read. */
+function JobsFallback() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="h-7 w-40 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+        <div className="h-4 w-72 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <TableSkeleton rows={6} />
+      </div>
+    </div>
+  );
+}
+
 export default function JobsPage() {
-  return <JobsPageContent />;
+  return (
+    <Suspense fallback={<JobsFallback />}>
+      <JobsPageContent />
+    </Suspense>
+  );
 }

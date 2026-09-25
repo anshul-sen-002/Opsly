@@ -5,7 +5,7 @@ import com.opsly.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,6 +13,9 @@ import java.util.Optional;
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     Optional<Customer> findByUser(User user);
+
+    // Portal lookups: a soft-deleted customer profile must never be served
+    Optional<Customer> findByUserAndDeletedFalse(User user);
 
     boolean existsByEmail(String email);
 
@@ -23,9 +26,9 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     long countByDeletedFalse();
 
-    long countByDeletedFalseAndCreatedAtAfter(LocalDateTime since);
+    long countByDeletedFalseAndCreatedAtAfter(Instant since);
 
-    long countByDeletedFalseAndCreatedAtBefore(LocalDateTime before);
+    long countByDeletedFalseAndCreatedAtBefore(Instant before);
 
     List<Customer> findTop2ByDeletedFalseOrderByCreatedAtDesc();
 }

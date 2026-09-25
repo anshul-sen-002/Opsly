@@ -20,7 +20,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { RoleBadge } from "@/components/ui/badge";
 import { THEME_STORAGE_KEY } from "@/lib/constants";
-import { avatarGradient } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { displayNameFromEmail } from "@/lib/utils";
 
 interface TopbarProps {
@@ -53,7 +53,7 @@ function useTheme() {
 const SEARCH_HINTS = [
   { label: "Dashboard", href: "/dashboard", icon: CalendarClock },
   { label: "Customers", href: "/customers", icon: Users },
-  { label: "Jobs", href: "/tasks", icon: Wrench },
+  { label: "Jobs", href: "/jobs", icon: Wrench },
 ];
 
 export function Topbar({ onMenuClick }: TopbarProps) {
@@ -210,18 +210,11 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             className="inline-flex items-center gap-2.5 rounded-2xl border border-transparent bg-indigo-50/60 py-1.5 pl-1.5 pr-2.5 transition hover:border-indigo-100 hover:bg-indigo-50 hover:shadow-sm sm:pr-3 dark:bg-slate-800/60 dark:hover:border-slate-700 dark:hover:bg-slate-800"
             aria-label="Open account menu"
           >
-            <span
-              className={`flex size-9 shrink-0 select-none items-center justify-center overflow-hidden rounded-full bg-gradient-to-br ring-1 ring-black/[0.04] dark:ring-white/10 ${avatarGradient(user?.email ?? "?")}`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/user-image.svg"
-                alt=""
-                aria-hidden
-                draggable={false}
-                className="pointer-events-none size-5 select-none brightness-0 invert"
-              />
-            </span>
+            <Avatar
+              name={user?.email ?? "?"}
+              imageUrl={user?.profileImageUrl}
+              size="md"
+            />
             <span className="hidden min-w-0 text-left sm:block">
               <span className="block max-w-[9rem] truncate text-sm font-semibold leading-tight text-slate-900 dark:text-white">
                 {user ? displayNameFromEmail(user.email) : "..."}

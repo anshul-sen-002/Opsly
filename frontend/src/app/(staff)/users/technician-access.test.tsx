@@ -47,7 +47,9 @@ const page = <T,>(content: T[]) => ({ content, totalPages: 1, totalElements: con
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.role = "TECHNICIAN";
-  mocks.staffList.mockResolvedValue(page([staff]));
+  mocks.staffList.mockImplementation((_page, _size, _sort, deleted) =>
+    Promise.resolve(page(deleted ? [] : [staff]))
+  );
   mocks.customerList.mockImplementation((_page, _size, _sort, deleted) =>
     Promise.resolve(page(deleted ? [] : [customer])));
   mocks.updateProfile.mockResolvedValue(staff);

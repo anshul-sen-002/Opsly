@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Payment represents money received against an Invoice.
@@ -49,13 +49,13 @@ public class Payment {
     // External transaction ref (UPI ID, card last 4, bank ref, etc.)
     private String transactionReference;
 
-    private LocalDateTime paidAt;
+    private Instant paidAt;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(nullable = false, updatable = false, columnDefinition = "timestamp with time zone")
+    private Instant createdAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = Instant.now();
     }
 }

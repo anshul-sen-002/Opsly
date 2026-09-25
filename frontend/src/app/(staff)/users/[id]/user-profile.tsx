@@ -8,9 +8,7 @@ import {
   CheckCircle2,
   ChevronRight,
   History,
-  KeyRound,
   Mail,
-  MoreVertical,
   Pencil,
   Phone,
   RotateCcw,
@@ -25,13 +23,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
-import { useToast } from "@/components/providers/toast-provider";
 import { Avatar } from "@/components/ui/avatar";
 import { DeletedBadge, RoleBadge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EmptyState, ErrorState, PageLoader } from "@/components/ui/states";
+import { EmptyState, ErrorState, ProfileSkeleton } from "@/components/ui/states";
 import { ApiError, jobApi, staffApi, technicianApi, userProfileApi } from "@/lib/api";
 import {
   cn,
@@ -89,7 +86,6 @@ const PERMISSIONS: Record<
 /** User profile page — header card, tabs, performance and quick actions */
 export function UserProfile() {
   const { user: currentUser } = useAuth();
-  const toast = useToast();
   const params = useParams<{ id: string }>();
 
   const [user, setUser] = useState<Staff | null>(null);
@@ -97,8 +93,6 @@ export function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>("overview");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const actions = useUserActions(async (fresh) => setUser(fresh));
   const roleChange = useRoleChange(async (fresh) => setUser(fresh));
@@ -158,25 +152,7 @@ export function UserProfile() {
     };
   }, [params.id, currentUser]);
 
-  // Close the header menu on outside click
-  useEffect(() => {
-    const onClickAway = (event: MouseEvent) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node)
-      ) {
-        setMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", onClickAway);
-
-    return () => {
-      document.removeEventListener("mousedown", onClickAway);
-    };
-  }, []);
-
-  if (loading) return <PageLoader />;
+  if (loading) return <ProfileSkeleton label="Loading user profile" />;
 
   if (error || !user) {
     return (
@@ -191,11 +167,19 @@ export function UserProfile() {
   const callerRole = currentUser?.role;
   // Admin manages staff accounts freely; a Manager may edit Technician profiles
   // (name, email, phone, specialization) — but never other staff/admin accounts.
-  // Account-management actions (activate/deactivate/delete/restore/role-change)
-  // stay ADMIN-only via `canManage`.
+  // Delete/restore/role-change stay ADMIN-only via `canManage`; status change is
+  // also open to a Manager when the target is a TECHNICIAN (mirrors the backend
+  // guard in AdminService.activateStaff/deactivateStaff).
   const canManage = callerRole === "ADMIN";
+  const canChangeStatus =
+    canManage ||
+    (callerRole === "MANAGER" &&
+      user.role === "TECHNICIAN" &&
+      !user.deleted &&
+      !isSelf);
   const canEditTechnician =
     callerRole === "MANAGER" && user.role === "TECHNICIAN" && !user.deleted && !isSelf;
+
   const canEdit =
     !user.deleted && (canManage || canEditTechnician || (callerRole === "TECHNICIAN" && isSelf));
   const isTechnician =
@@ -324,82 +308,6 @@ export function UserProfile() {
                 Edit Profile
               </Button>
             </Link>}
-
-            {canManage && <div className="relative" ref={menuRef}>
-              <Button
-                variant="ghost"
-                aria-label="More actions"
-                onClick={() =>
-                  setMenuOpen((open) => !open)
-                }
-                className="px-2"
-              >
-                <MoreVertical className="size-4" />
-              </Button>
-
-              {menuOpen && (
-                <div className="absolute right-0 top-11 z-30 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg animate-pop-in dark:border-slate-700 dark:bg-slate-900">
-                  {user.deleted ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        actions.request("restore", user);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                    >
-                      <RotateCcw className="size-4" />
-                      Restore
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          actions.request(
-                            user.status === "ACTIVE"
-                              ? "deactivate"
-                              : "activate",
-                            user
-                          );
-                        }}
-                        className={cn(
-                          "flex w-full items-center gap-2.5 px-3 py-2 text-sm transition hover:bg-slate-50 dark:hover:bg-slate-800",
-                          user.status === "ACTIVE"
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-slate-600 dark:text-slate-300"
-                        )}
-                      >
-                        {user.status === "ACTIVE" ? (
-                          <Ban className="size-4" />
-                        ) : (
-                          <RotateCcw className="size-4" />
-                        )}
-
-                        {user.status === "ACTIVE"
-                          ? "Deactivate"
-                          : "Activate"}
-                      </button>
-
-                      {!isSelf && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMenuOpen(false);
-                            actions.request("delete", user);
-                          }}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-rose-600 transition hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
-                        >
-                          <Trash2 className="size-4" />
-                          Delete
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>}
           </div>
         </div>
 
@@ -787,7 +695,7 @@ export function UserProfile() {
                 Status
               </span>
 
-              {canManage && <StatusToggle
+              {canChangeStatus && <StatusToggle
                 checked={
                   !user.deleted &&
                   user.status === "ACTIVE"
@@ -852,7 +760,7 @@ export function UserProfile() {
             </div>
           )}
 
-          {canManage && <InfoCard icon={Zap} title="Quick Actions">
+          {canChangeStatus && <InfoCard icon={Zap} title="Quick Actions">
             <div className="space-y-1">
               <Link
                 href={`/users/${user.id}/edit`}
@@ -862,28 +770,16 @@ export function UserProfile() {
                 Edit User
               </Link>
 
-              <button
-                type="button"
-                onClick={() => roleChange.openFor(user)}
-                className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50/60 hover:text-indigo-700 hover:shadow-sm dark:text-slate-300 dark:hover:border-indigo-500/30 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
-              >
-                <UserCog className="size-4" />
-                Change Role
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  toast.info(
-                    "Not available yet",
-                    "Password reset isn't wired to the backend yet."
-                  )
-                }
-                className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50/60 hover:text-indigo-700 hover:shadow-sm dark:text-slate-300 dark:hover:border-indigo-500/30 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
-              >
-                <KeyRound className="size-4" />
-                Reset Password
-              </button>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => roleChange.openFor(user)}
+                  className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3.5 py-2.5 text-sm font-medium text-slate-600 transition hover:border-indigo-200 hover:bg-indigo-50/60 hover:text-indigo-700 hover:shadow-sm dark:text-slate-300 dark:hover:border-indigo-500/30 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-200"
+                >
+                  <UserCog className="size-4" />
+                  Change Role
+                </button>
+              )}
 
               {user.deleted ? (
                 <button
@@ -920,7 +816,7 @@ export function UserProfile() {
                 </button>
               )}
 
-              {!user.deleted && !isSelf && (
+              {canManage && !user.deleted && !isSelf && (
                 <button
                   type="button"
                   onClick={() =>
@@ -937,7 +833,7 @@ export function UserProfile() {
         </div>
       </div>
 
-      {canManage && actions.dialog}
+      {canChangeStatus && actions.dialog}
       {canManage && roleChange.dialog}
     </div>
   );

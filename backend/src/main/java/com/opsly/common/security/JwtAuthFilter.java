@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -57,7 +58,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // Only set authentication if not already set in SecurityContext
         if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+            UserDetails userDetails;
+            try {
+                userDetails = userDetailsService.loadUserByUsername(email);
+            } catch (AuthenticationException e) {
+                // The account behind a still-valid token is gone (e.g. the login of a
+                // deleted customer). Stay unauthenticated so the request is rejected
+                // with 401 instead of blowing up as a 500.
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             // Rejected accounts (INACTIVE or soft-deleted) never get API access,
             // even when their access token has not expired yet

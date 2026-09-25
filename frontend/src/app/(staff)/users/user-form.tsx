@@ -11,6 +11,7 @@ import { EntityFormShell } from "@/components/ui/entity-form";
 import { Input, PasswordInput } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ApiError, staffApi, userProfileApi } from "@/lib/api";
+import { isValidPhone, PHONE_ERROR_MESSAGE } from "@/lib/validation";
 import type { StaffRole } from "@/types";
 
 const ROLE_OPTIONS = [
@@ -53,7 +54,12 @@ export function UserForm({ userId, selfService = false, defaultValues, submitLab
             ? z.string().optional()
             : z.string().min(6, "Password must be at least 6 characters"),
           role: z.enum(["ADMIN", "MANAGER", "TECHNICIAN"], { message: "Select a role" }),
-          phone: z.string().optional(),
+          // Optional for every staff role, but when supplied it must look like a real number
+          phone: z
+            .string()
+            .trim()
+            .refine((value) => value === "" || isValidPhone(value), { message: PHONE_ERROR_MESSAGE })
+            .optional(),
           specialization: z.string().optional(),
         })
         .refine(

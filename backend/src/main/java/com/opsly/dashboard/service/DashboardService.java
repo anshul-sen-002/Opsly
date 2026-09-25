@@ -22,8 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -49,12 +50,12 @@ public class DashboardService {
     public DashboardSummaryResponse getSummary(int requestedDays) {
         int days = ALLOWED_RANGES.contains(requestedDays) ? requestedDays : 7;
         LocalDate today = LocalDate.now();
-        LocalDateTime todayStart = today.atStartOfDay();
-        LocalDateTime windowStart = today.minusDays(days - 1L).atStartOfDay();
-        LocalDateTime weekStart = today.minusDays(SPARKLINE_DAYS - 1L).atStartOfDay();
-        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
-        LocalDateTime lastMonthStart = today.withDayOfMonth(1).minusMonths(1).atStartOfDay();
-        LocalDateTime monthEnd = today.plusDays(1).atStartOfDay();
+        Instant todayStart = startOfDay(today);
+        Instant windowStart = startOfDay(today.minusDays(days - 1L));
+        Instant weekStart = startOfDay(today.minusDays(SPARKLINE_DAYS - 1L));
+        Instant monthStart = startOfDay(today.withDayOfMonth(1));
+        Instant lastMonthStart = startOfDay(today.withDayOfMonth(1).minusMonths(1));
+        Instant monthEnd = startOfDay(today.plusDays(1));
         List<Job> windowJobs = jobRepository.findCreatedSince(windowStart);
         long totalJobs = jobRepository.count();
         long inProgress = jobRepository.countByStatus(JobStatus.IN_PROGRESS);
@@ -68,7 +69,7 @@ public class DashboardService {
             if (job.getCreatedAt() == null) {
                 continue;
             }
-            perDay.computeIfAbsent(job.getCreatedAt().toLocalDate(), this::newDayBucket).merge(job.getStatus(), 1L, Long::sum);
+            perDay.computeIfAbsent(toDay(job.getCreatedAt()), this::newDayBucket).merge(job.getStatus(), 1L, Long::sum);
         }
         List<String> labels = new ArrayList<>();
         List<Long> completedSeries = new ArrayList<>();
@@ -84,7 +85,7 @@ public class DashboardService {
         List<Double> totalSpark = new ArrayList<>();
         List<Double> customerSpark = new ArrayList<>();
         for (int offset = SPARKLINE_DAYS - 1; offset >= 0; offset--) {
-            LocalDateTime dayEnd = today.minusDays(offset).plusDays(1).atStartOfDay();
+            Instant dayEnd = startOfDay(today.minusDays(offset).plusDays(1));
             totalSpark.add((double) jobRepository.countByCreatedAtBefore(dayEnd));
             customerSpark.add((double) customerRepository.countByDeletedFalseAndCreatedAtBefore(dayEnd));
         }
@@ -93,7 +94,7 @@ public class DashboardService {
         Map<LocalDate, BigDecimal> revenueByDay = new HashMap<>();
         for (Payment payment : paymentRepository.findSuccessfulSince(PaymentStatus.SUCCESS, weekStart)) {
             if (payment.getPaidAt() != null) {
-                revenueByDay.merge(payment.getPaidAt().toLocalDate(), payment.getAmount(), BigDecimal::add);
+                revenueByDay.merge(toDay(payment.getPaidAt()), payment.getAmount(), BigDecimal::add);
             }
         }
         List<Double> revenueSpark = new ArrayList<>();
@@ -115,7 +116,7 @@ public class DashboardService {
         }
         long totalJobsForShare = Math.max(totalJobs, 1);
         List<TopCustomer> topCustomers = new ArrayList<>();
-        for (Object[] row : jobRepository.countJobsByCustomerTop5()) {
+        for (Object[] row : jobRepository.countJobsByCustomerTop4()) {
             long jobs = ((Number) row[2]).longValue();
             topCustomers.add(TopCustomer.builder().id((Long) row[0]).name((String) row[1]).jobCount(jobs).share(round1(jobs * 100.0 / totalJobsForShare)).build());
         }
@@ -153,6 +154,16 @@ public class DashboardService {
             bucket.put(status, 0L);
         }
         return bucket;
+    }
+
+    /** First instant of the given day, in the server's zone (day buckets for chart/sparklines). */
+    private Instant startOfDay(LocalDate day) {
+        return day.atStartOfDay(ZoneId.systemDefault()).toInstant();
+    }
+
+    /** Instant to the day it belongs to, in the server's zone. */
+    private LocalDate toDay(Instant instant) {
+        return instant.atZone(ZoneId.systemDefault()).toLocalDate();
     }
 
     private long pendingCount(List<Job> jobs) {

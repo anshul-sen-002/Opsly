@@ -1,7 +1,13 @@
 ﻿import type { ApiResponse, AuthResponse, ChatResponse, CreateStaffInput, CreateJobInput, CreateInvoiceInput, CreatePaymentInput, UpdateStaffInput, Customer, CustomerInput, Paged, Staff, DashboardSummary, Job, Invoice, Payment, Technician, JobStatus, InvoiceStatus, PaymentMethod, AppNotification } from "@/types"
 
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+/**
+ * Same-origin by default: API calls go to /api/* on the Vercel domain and are
+ * proxied to the backend (next.config.mjs rewrites), so the refresh cookie is
+ * first-party. Set NEXT_PUBLIC_API_URL only for local dev
+ * (e.g. http://localhost:8080) to bypass the proxy.
+ */
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 
 /** Error thrown for every failed API call */
 export class ApiError extends Error {
@@ -209,6 +215,9 @@ export const customerApi = {
   /** ADMIN/MANAGER: create a login account for a staff-created customer */
   grantAccess: (id: number | string, input: { email: string; password: string }) =>
     request<Customer>(`/customers/${id}/grant-access`, { method: "POST", body: input }),
+  /** ADMIN/MANAGER: suspend (INACTIVE) or reactivate (ACTIVE) the linked portal login */
+  updateLoginStatus: (id: number | string, status: "ACTIVE" | "INACTIVE") =>
+    request<Customer>(`/customers/${id}/login-status?status=${status}`, { method: "PUT" }),
 };
 
 

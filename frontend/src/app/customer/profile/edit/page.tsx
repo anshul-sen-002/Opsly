@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CustomerForm } from "@/app/(staff)/customers/customer-form";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { ErrorState, FormSkeleton } from "@/components/ui/states";
 import { ApiError, customerApi } from "@/lib/api";
 import type { Customer } from "@/types";
 
@@ -26,7 +26,7 @@ export default function EditMyProfilePage() {
     return () => { cancelled = true; };
   }, [attempt]);
 
-  if (loading) return <PageLoader />;
+  if (loading) return <FormSkeleton label="Loading profile form" />;
   if (error || !customer) return <ErrorState message={error ?? "Profile not found."} onRetry={() => setAttempt((value) => value + 1)} />;
   if (customer.deleted) return <ErrorState message="This customer profile is inactive. Contact support." />;
 

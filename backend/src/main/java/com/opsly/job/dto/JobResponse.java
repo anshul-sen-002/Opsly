@@ -3,7 +3,7 @@ package com.opsly.job.dto;
 import com.opsly.job.entity.JobStatus;
 import lombok.Getter;
 import lombok.Setter;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -15,7 +15,7 @@ public class JobResponse {
     private String technicianName;
     private JobStatus status;
     private String description;
-    private LocalDateTime scheduledAt;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private Instant scheduledAt;
+    private Instant createdAt;
+    private Instant updatedAt;
 }

@@ -91,9 +91,12 @@ public class InvoiceController {
                 invoiceService.getMyInvoiceById(id, customer.getId())));
     }
 
-    // Resolve Customer profile from authenticated User — throws 404 if no profile linked
+    // Resolve Customer profile from authenticated User — throws 404 if no active
+    // profile is linked (a soft-deleted customer profile counts as unlinked).
+    // The caller login itself must also be ACTIVE and NOT deleted.
     private Customer resolveCustomer(User caller) {
-        return customerRepository.findByUser(caller)
-                .orElseThrow(() -> new ResourceNotFoundException("No customer profile linked to this account"));
+        return customerRepository.findByUserAndDeletedFalse(caller)
+                .filter(c -> caller.isEnabled())
+                .orElseThrow(() -> new ResourceNotFoundException("No active customer profile linked to this account"));
     }
 }

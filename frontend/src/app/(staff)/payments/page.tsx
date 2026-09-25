@@ -153,10 +153,13 @@ function PaymentsPageContent() {
           if (!deleteFor) return;
           try {
             await paymentApi.delete(deleteFor.id);
-            toast.success("Payment deleted", "The invoice balance has been recalculated.");
             await load(payments.length === 1 && page > 0 ? page - 1 : page);
+            // Close-first contract: ConfirmDialog fires this toast AFTER closing.
+            return { title: "Payment deleted", description: "The invoice balance has been recalculated." };
           } catch (err) {
             toast.error("Delete failed", err instanceof ApiError ? err.message : "Failed to delete payment.");
+            // Rethrow so the dialog stays open — error toast shows above it.
+            throw err;
           }
         }} />
     </div>

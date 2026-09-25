@@ -20,7 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Customer service handles CRUD for Customer records.
@@ -82,6 +82,10 @@ public class CustomerService {
     /**
      * Soft deletes a customer record.
      * The row is kept (deleted = true) so it can be restored later.
+     *
+     * The linked portal login (if any) is soft-deleted with it — otherwise the
+     * login would stay ACTIVE and the deleted customer could still sign in,
+     * because authentication only reads the {@code users} row.
      */
     @Transactional
     public CustomerResponse deleteCustomer(Long id) {
@@ -90,12 +94,14 @@ public class CustomerService {
             throw new BadRequestException("Customer is already deleted");
         }
 
+        Instant now = Instant.now();
         customer.setDeleted(true);
-        customer.setDeletedAt(LocalDateTime.now());
+        customer.setDeletedAt(now);
+        customer.setLoginDisabledByDelete(softDeleteLogin(customer, now));
         return toResponse(customerRepository.save(customer));
     }
 
-    // Restore a soft-deleted customer record
+    // Restore a soft-deleted customer record — and the login it disabled
     @Transactional
     public CustomerResponse restoreCustomer(Long id) {
         Customer customer = findById(id);
@@ -105,6 +111,8 @@ public class CustomerService {
 
         customer.setDeleted(false);
         customer.setDeletedAt(null);
+        restoreLogin(customer);
+        customer.setLoginDisabledByDelete(false);
         return toResponse(customerRepository.save(customer));
     }
 
@@ -122,6 +130,11 @@ public class CustomerService {
     @Transactional
     public CustomerResponse grantPortalAccess(Long customerId, GrantPortalAccessRequest request) {
         Customer customer = findById(customerId);
+
+        // A deleted customer must not get a login — restore the profile first
+        if (customer.isDeleted()) {
+            throw new BadRequestException("Cannot grant portal access to a deleted customer. Restore it first.");
+        }
 
         // Already has a login account — nothing to do
         if (customer.getUser() != null) {
@@ -147,16 +160,101 @@ public class CustomerService {
         return toResponse(customerRepository.save(customer));
     }
 
+    /**
+     * ADMIN/MANAGER toggle: suspends or reactivates the portal login linked to
+     * a customer. Only flips {@code users.status} — the soft-delete flag belongs
+     * to delete/restore and is left untouched, so a suspended login is never
+     * confused with a deleted one (restore semantics stay intact).
+     */
+    @Transactional
+    public CustomerResponse updateLoginStatus(Long id, UserStatus target) {
+        Customer customer = findById(id);
+        if (customer.isDeleted()) {
+            throw new BadRequestException("Cannot change portal access of a deleted customer. Restore it first.");
+        }
+        User login = customer.getUser();
+        if (login == null) {
+            throw new BadRequestException("This customer has no portal login account.");
+        }
+        if (login.isDeleted()) {
+            throw new BadRequestException("The linked login is deleted. Restore the customer first.");
+        }
+        if (login.getStatus() != target) {
+            login.setStatus(target);
+            userRepository.save(login);
+        }
+        return toResponse(customer);
+    }
+
     // Ppackage-visible helper used by other services (e.g. JobService)
     public Customer findById(Long id) {
         return customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer", id));
     }
 
-    // Resolve the customer profile linked to an authenticated User
+    // Resolve the customer profile linked to an authenticated User.
+    // Both sides must allow access: the caller login must be ACTIVE and NOT
+    // deleted, and the customer profile must not be soft-deleted.
     private Customer findByUser(User caller) {
-        return customerRepository.findByUser(caller)
-                .orElseThrow(() -> new ResourceNotFoundException("No customer profile linked to this account"));
+        requireActiveCaller(caller);
+        return customerRepository.findByUserAndDeletedFalse(caller)
+                .orElseThrow(() -> new ResourceNotFoundException("No active customer profile linked to this account"));
+    }
+
+    /**
+     * An account is allowed only when it is ACTIVE and NOT deleted
+     * (same rule as {@code User.isEnabled()}, checked explicitly so portal
+     * lookups never serve a rejected login even if the SecurityContext holds
+     * a stale principal).
+     */
+    private void requireActiveCaller(User caller) {
+        if (caller == null || !caller.isEnabled()) {
+            throw new ResourceNotFoundException("No active customer profile linked to this account");
+        }
+    }
+
+    /**
+     * Soft-deletes the User account behind a customer, mirroring
+     * {@code AdminService.deleteStaff}: deleted + deletedAt + INACTIVE.
+     * An account is allowed only when it is ACTIVE and NOT deleted
+     * (see {@code User.isEnabled()}), so both are set together.
+     *
+     * @return true when this call flipped the login from ACTIVE to INACTIVE
+     *         (restore must undo it); false when the login was already
+     *         INACTIVE and must stay that way after restore.
+     */
+    private boolean softDeleteLogin(Customer customer, Instant deletedAt) {
+        User login = customer.getUser();
+        if (login == null) {
+            return false; // walk-in customer without portal access
+        }
+        boolean wasActive = login.getStatus() == UserStatus.ACTIVE;
+        login.setDeleted(true);
+        login.setDeletedAt(deletedAt);
+        login.setStatus(UserStatus.INACTIVE);
+        userRepository.save(login);
+        return wasActive;
+    }
+
+    /**
+     * Restores the login that {@link #softDeleteLogin} disabled, mirroring
+     * {@code AdminService.restoreStaff} — but only when the delete actually
+     * disabled it ({@code loginDisabledByDelete}). A login that was already
+     * INACTIVE before the delete keeps its INACTIVE status; only the
+     * soft-delete flag is lifted.
+     */
+    private void restoreLogin(Customer customer) {
+        User login = customer.getUser();
+        if (login == null) {
+            return;
+        }
+        boolean reactivate = customer.isLoginDisabledByDelete();
+        login.setDeleted(false);
+        login.setDeletedAt(null);
+        if (reactivate) {
+            login.setStatus(UserStatus.ACTIVE);
+        }
+        userRepository.save(login);
     }
 
     private CustomerResponse toResponse(Customer customer) {
@@ -164,6 +262,8 @@ public class CustomerService {
         User user = customer.getUser();
         response.setHasLoginAccount(user != null);
         response.setUserId(user != null ? user.getId() : null);
+        response.setLoginStatus(user != null ? user.getStatus() : null);
+        response.setLoginDeleted(user != null && user.isDeleted());
         response.setProfileImageUrl(user != null ? user.getProfileImageUrl() : null);
         return response;
     }

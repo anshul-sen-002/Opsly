@@ -21,7 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -164,9 +164,11 @@ public class AdminService {
     }
 
     // Activate a staff account (INACTIVE -> ACTIVE). Idempotent.
+    // ADMIN may flip any staff account; MANAGER only TECHNICIAN accounts.
     @Transactional
-    public StaffResponse activateStaff(Long id) {
+    public StaffResponse activateStaff(Long id, Role callerRole) {
         User user = findUser(id);
+        assertStatusChangeAllowed(user, callerRole);
         if (user.isDeleted()) {
             throw new BadRequestException("Restore the account before activating it");
         }
@@ -181,8 +183,9 @@ public class AdminService {
     // ADMIN accounts cannot be deactivated — they are the system operators
     // and must always remain accessible for security/auditing.
     @Transactional
-    public StaffResponse deactivateStaff(Long id) {
+    public StaffResponse deactivateStaff(Long id, Role callerRole) {
         User user = findUser(id);
+        assertStatusChangeAllowed(user, callerRole);
         if (user.isDeleted()) {
             throw new BadRequestException("Cannot deactivate a deleted account");
         }
@@ -194,6 +197,18 @@ public class AdminService {
         }
         user.setStatus(UserStatus.INACTIVE);
         return toResponse(userRepository.save(user));
+    }
+
+    /**
+     * Authorization for activate/deactivate:
+     *   - ADMIN may change the status of any staff account
+     *   - MANAGER only of TECHNICIAN accounts (mirrors {@link #updateStaff} —
+     *     a manager must not lock out another manager or an admin)
+     */
+    private void assertStatusChangeAllowed(User user, Role callerRole) {
+        if (callerRole == Role.MANAGER && user.getRole() != Role.TECHNICIAN) {
+            throw new ForbiddenException("Managers can only change the status of Technician accounts");
+        }
     }
 
     /**
@@ -212,7 +227,7 @@ public class AdminService {
         }
 
         user.setDeleted(true);
-        user.setDeletedAt(LocalDateTime.now());
+        user.setDeletedAt(Instant.now());
         user.setStatus(UserStatus.INACTIVE);
         return toResponse(userRepository.save(user));
     }

@@ -20,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -159,7 +160,8 @@ public class ServiceRequestTools {
                     .getJobsByCustomer(requireCustomerId(caller), PageRequest.of(0, 200)).getContent();
         };
         List<JobResponse> todays = visible.stream()
-                .filter(j -> j.getScheduledAt() != null && j.getScheduledAt().toLocalDate().equals(today))
+                .filter(j -> j.getScheduledAt() != null
+                        && j.getScheduledAt().atZone(ZoneId.systemDefault()).toLocalDate().equals(today))
                 .toList();
         if (todays.isEmpty()) return "No service requests scheduled for today.";
         return formatList("Today's schedule (" + today + ")", todays, todays.size());
@@ -218,8 +220,9 @@ public class ServiceRequestTools {
     }
 
     private Long requireCustomerId(User caller) {
-        return customerRepository.findByUser(caller)
-                .orElseThrow(() -> new IllegalStateException("No customer profile linked to your account."))
+        return customerRepository.findByUserAndDeletedFalse(caller)
+                .filter(c -> caller.isEnabled())
+                .orElseThrow(() -> new IllegalStateException("No active customer profile linked to your account."))
                 .getId();
     }
 

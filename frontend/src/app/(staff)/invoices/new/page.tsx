@@ -10,7 +10,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { EntityFormShell } from "@/components/ui/entity-form";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { ErrorState, FormSkeleton } from "@/components/ui/states";
 import { ApiError, invoiceApi, jobApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import type { Job } from "@/types";
@@ -95,7 +95,7 @@ function NewInvoicePageContent() {
     }
   };
 
-  if (loading) return <PageLoader />;
+  if (loading) return <FormSkeleton label="Loading invoice form" fields={4} />;
 
   if (loadError) {
     return <ErrorState title="Could not load closed jobs" message={loadError} onRetry={() => void loadJobs()} />;

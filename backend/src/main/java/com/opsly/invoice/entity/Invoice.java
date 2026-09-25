@@ -7,7 +7,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "invoices")
@@ -54,20 +54,20 @@ public class Invoice {
     private String fileUrl;
     private String filePublicId;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(nullable = false, updatable = false, columnDefinition = "timestamp with time zone")
+    private Instant createdAt;
 
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    @Column(nullable = false, columnDefinition = "timestamp with time zone")
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 }

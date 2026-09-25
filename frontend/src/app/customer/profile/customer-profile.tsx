@@ -27,7 +27,7 @@ import {
   RoleBadge,
 } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EmptyState, ErrorState, PageLoader } from "@/components/ui/states";
+import { EmptyState, ErrorState, ProfileSkeleton } from "@/components/ui/states";
 import { ApiError, customerApi, invoiceApi, jobApi } from "@/lib/api";
 import {
   cn,
@@ -196,7 +196,7 @@ export function CustomerProfile() {
     };
   }, []);
 
-  if (loading) return <PageLoader />;
+  if (loading) return <ProfileSkeleton label="Loading your profile" />;
 
   if (error || !profile) {
     return <ErrorState title="Could not load your profile" message={error ?? undefined} />;

@@ -4,18 +4,20 @@ import {
   ArrowRight,
   CalendarClock,
   LayoutDashboard,
+  RefreshCw,
   Server,
   Sparkles,
   UserPlus,
 } from "lucide-react";
 import Link from "next/link";
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { MetricCards } from "@/components/dashboard/metric-cards";
 import { OverviewChart } from "@/components/dashboard/overview-chart";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { StatusDonut } from "@/components/dashboard/status-donut";
 import { TopCustomers } from "@/components/dashboard/top-customers";
 import { PageHeader } from "@/components/page-header";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { ErrorState } from "@/components/ui/states";
 import { dashboardApi } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -42,7 +44,7 @@ const QUICK_ACTIONS = [
     icon: Server,
   },
   {
-    href: "/tasks",
+    href: "/jobs?status=PENDING",
     label: "Review pending work",
     description: "Check jobs waiting for assignment.",
     icon: CalendarClock,
@@ -92,6 +94,10 @@ export default function DashboardPage() {
   const totalJobs = summary?.stats.find((s) => s.key === "total_jobs")?.value ?? 0;
   const revenue = summary?.stats.find((s) => s.key === "monthly_revenue")?.value ?? 0;
 
+  // First paint has no data yet — show the full skeleton placeholder so the
+  // page structure is visible while the summary request is in flight.
+  if (loading && !summary) return <DashboardSkeleton />;
+
   return (
     <div className="space-y-6">
       <PageHeader icon={LayoutDashboard} title="Dashboard" subtitle="Overview of your service operations" />
@@ -109,38 +115,44 @@ export default function DashboardPage() {
             </p>
             <h2 className="mt-3 text-2xl font-bold sm:text-3xl">Welcome back</h2>
             <p className="mt-2 text-sm leading-6 text-indigo-100">
-              {loading || !summary ? (
-                "Loading live stats from your jobs, customers and payments…"
-              ) : (
-                <>
-                  Team is tracking <span className="font-semibold text-white">{Math.round(totalJobs)} jobs</span>{" "}
-                  with <span className="font-semibold text-white">{formatCurrency(revenue)}</span> collected this
-                  month.
-                </>
-              )}
+              Team is tracking <span className="font-semibold text-white">{Math.round(totalJobs)} jobs</span>{" "}
+              with <span className="font-semibold text-white">{formatCurrency(revenue)}</span> collected this
+              month.
             </p>
           </div>
-          <div className="flex items-center gap-1 rounded-xl bg-white/10 p-1 backdrop-blur">
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setDays(r)}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
-                  days === r ? "bg-white text-indigo-700 shadow-sm" : "text-indigo-100 hover:bg-white/10"
-                )}
+          <div className="flex flex-wrap items-center gap-2">
+            {loading && (
+              <span
+                role="status"
+                aria-live="polite"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-indigo-50"
               >
-                {r}D
-              </button>
-            ))}
+                <RefreshCw className="size-3.5 animate-spin" /> Updating
+              </span>
+            )}
+            <div
+              aria-busy={loading}
+              className="flex items-center gap-1 rounded-xl bg-white/10 p-1 backdrop-blur"
+            >
+              {RANGES.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setDays(r)}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
+                    days === r ? "bg-white text-indigo-700 shadow-sm" : "text-indigo-100 hover:bg-white/10"
+                  )}
+                >
+                  {r}D
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {loading && !summary ? (
-        <PageLoader />
-      ) : error || !summary ? (
+      {error || !summary ? (
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <ErrorState title="Dashboard unavailable" message={error ?? undefined} onRetry={() => void load(days)} />
         </div>

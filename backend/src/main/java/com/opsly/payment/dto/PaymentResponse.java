@@ -5,7 +5,7 @@ import com.opsly.payment.entity.PaymentStatus;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -17,6 +17,6 @@ public class PaymentResponse {
     private PaymentMethod paymentMethod;
     private PaymentStatus status;
     private String transactionReference;
-    private LocalDateTime paidAt;
-    private LocalDateTime createdAt;
+    private Instant paidAt;
+    private Instant createdAt;
 }

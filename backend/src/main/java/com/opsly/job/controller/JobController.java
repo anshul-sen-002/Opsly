@@ -34,10 +34,12 @@ public class JobController {
     public ResponseEntity<ApiResponse<JobResponse>> createJob(@Valid @RequestBody JobRequest request,
             @AuthenticationPrincipal User caller) {
         // For customers, derive customerId from the authenticated user (ignore
-        // client-supplied id)
+        // client-supplied id). Both sides must allow access: caller ACTIVE and
+        // NOT deleted, and profile not soft-deleted.
         if (caller.getRole() == Role.CUSTOMER) {
-            Customer customer = customerRepository.findByUser(caller)
-                    .orElseThrow(() -> new ResourceNotFoundException("No customer profile linked to this account"));
+            Customer customer = customerRepository.findByUserAndDeletedFalse(caller)
+                    .filter(c -> caller.isEnabled())
+                    .orElseThrow(() -> new ResourceNotFoundException("No active customer profile linked to this account"));
             request.setCustomerId(customer.getId());
         }
         // For ADMIN/MANAGER, use the customerId supplied in the request (validation
@@ -134,10 +136,12 @@ public class JobController {
         return ResponseEntity.ok(ApiResponse.success("Job closed", jobService.closeJob(id)));
     }
 
-    // Resolve Customer profile from authenticated User — throws 404 if no profile
-    // linked
+    // Resolve Customer profile from authenticated User — throws 404 if no active
+    // profile is linked (a soft-deleted customer profile counts as unlinked).
+    // The caller login itself must also be ACTIVE and NOT deleted.
     private Customer resolveCustomer(User caller) {
-        return customerRepository.findByUser(caller)
-                .orElseThrow(() -> new ResourceNotFoundException("No customer profile linked to this account"));
+        return customerRepository.findByUserAndDeletedFalse(caller)
+                .filter(c -> caller.isEnabled())
+                .orElseThrow(() -> new ResourceNotFoundException("No active customer profile linked to this account"));
     }
 }

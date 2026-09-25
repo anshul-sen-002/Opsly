@@ -1,6 +1,8 @@
 package com.opsly.user.dto;
 
+import com.opsly.common.validation.PhonePatterns;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,6 +21,7 @@ public class UpdateMyProfileRequest {
     private String name;
 
     @Size(max = 255, message = "Phone must be at most 255 characters")
+    @Pattern(regexp = PhonePatterns.OPTIONAL, message = PhonePatterns.MESSAGE)
     private String phone;
 
     // Only applied for TECHNICIAN accounts — ignored otherwise

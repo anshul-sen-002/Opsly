@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { InvoiceStatusBadge, PaymentMethodBadge, PaymentStatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { ErrorState, DetailSkeleton } from "@/components/ui/states";
 import { ApiError, invoiceApi, paymentApi } from "@/lib/api";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import type { Invoice, Payment } from "@/types";
@@ -65,7 +65,7 @@ function InvoiceDetailPageContent() {
     }
   };
 
-  if (loading) return <PageLoader />;
+  if (loading) return <DetailSkeleton label="Loading invoice" />;
 
   if (error || !invoice) {
     return <ErrorState title="Could not load invoice" message={error ?? undefined} onRetry={() => void load()} />;

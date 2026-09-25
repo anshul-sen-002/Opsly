@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { ErrorState, ProfileSkeleton } from "@/components/ui/states";
 import { ApiError, jobApi, technicianApi } from "@/lib/api";
 import { formatLongDate } from "@/lib/utils";
 import type { Job, Technician } from "@/types";
@@ -38,7 +38,7 @@ function TechnicianDetailPageContent() {
     void load();
   }, [load]);
 
-  if (loading) return <PageLoader />;
+  if (loading) return <ProfileSkeleton label="Loading technician" showTabs={false} />;
 
   if (error || !technician) {
     return <ErrorState title="Could not load technician" message={error ?? undefined} onRetry={() => void load()} />;

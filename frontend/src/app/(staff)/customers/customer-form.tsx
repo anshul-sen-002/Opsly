@@ -10,12 +10,17 @@ import { useToast } from "@/components/providers/toast-provider";
 import { EntityFormShell } from "@/components/ui/entity-form";
 import { Input } from "@/components/ui/input";
 import { customerApi, ApiError } from "@/lib/api";
+import { isValidPhone, PHONE_ERROR_MESSAGE } from "@/lib/validation";
 import type { CustomerInput } from "@/types";
 
 const customerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  phone: z.string().min(7, "Enter a valid phone number"),
-  email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
+  phone: z
+    .string()
+    .trim()
+    .min(1, "Phone is required")
+    .refine(isValidPhone, { message: PHONE_ERROR_MESSAGE }),
+  email: z.string().min(1, "Email is required").email("Enter a valid email address"),
   companyName: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
@@ -35,7 +40,7 @@ interface CustomerFormProps {
 const FIELD_HINTS: Record<keyof CustomerFormValues, { helper: string }> = {
   name: { helper: "Shown on jobs, invoices and lists." },
   phone: { helper: "Used for job updates and reminders." },
-  email: { helper: "Optional — needed only for customer login." },
+  email: { helper: "Required — used for portal login and invoices." },
   companyName: { helper: "Fill only for business customers." },
   address: { helper: "Street address for site visits." },
   city: { helper: "Used for filtering and reports." },
@@ -70,7 +75,7 @@ export function CustomerForm({ customerId, selfService = false, defaultValues, s
     const input: CustomerInput = {
       name: values.name,
       phone: values.phone,
-      email: values.email || undefined,
+      email: values.email,
       companyName: values.companyName || undefined,
       address: values.address || undefined,
       city: values.city || undefined,
@@ -143,7 +148,8 @@ export function CustomerForm({ customerId, selfService = false, defaultValues, s
         {...registerField("phone")}
       />
       <Input
-        label="Email (optional)"
+        label="Email"
+        required
         type="email"
         autoComplete="email"
         placeholder="jane@example.com"

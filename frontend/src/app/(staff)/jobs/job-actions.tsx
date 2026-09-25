@@ -82,15 +82,16 @@ export function useJobActions(onUpdated: () => void | Promise<unknown>) {
             : jobApi.close;
       try {
         const updated = await apiCall(state.job.id);
-        toast.success(
-          `Job #${updated.id} updated`,
-          `Status is now ${updated.status.replace(/_/g, " ")}.`
-        );
         // Status change fires a backend notification (after commit) —
         // refresh the bell so OTHER roles see it without waiting 45s
         refreshNotifications();
         signalNotificationsChanged();
         await onUpdated();
+        // Close-first contract: ConfirmDialog fires this toast AFTER closing.
+        return {
+          title: `Job #${updated.id} updated`,
+          description: `Status is now ${updated.status.replace(/_/g, " ")}.`,
+        };
       } catch (err) {
         toast.error("Action failed", err instanceof ApiError ? err.message : "Unexpected error");
         throw err;
@@ -186,13 +187,14 @@ function AssignTechnicianModal({
     setSaving(true);
     try {
       const updated = await jobApi.assignTechnician(job.id, Number(technicianId));
+      signalNotificationsChanged();
+      await onAssigned();
+      // Close FIRST so the success toast renders after the modal is gone.
+      onClose();
       toast.success(
         "Technician assigned",
         `Job #${updated.id} assigned to ${updated.technicianName ?? "technician"}.`
       );
-      signalNotificationsChanged();
-      await onAssigned();
-      onClose();
     } catch (err) {
       toast.error("Assignment failed", err instanceof ApiError ? err.message : "Unexpected error");
     } finally {

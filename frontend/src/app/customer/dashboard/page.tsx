@@ -4,7 +4,8 @@ import { Activity, ArrowRight, ClipboardList, Receipt, Wallet } from "lucide-rea
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { InvoiceStatusBadge, JobStatusBadge } from "@/components/ui/badge";
-import { ErrorState, PageLoader } from "@/components/ui/states";
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
+import { ErrorState } from "@/components/ui/states";
 import { ApiError, invoiceApi, jobApi } from "@/lib/api";
 import { cn, formatCurrency, formatDateTime } from "@/lib/utils";
 import type { Invoice, Job } from "@/types";
@@ -82,7 +83,7 @@ function CustomerDashboardContent() {
     void load();
   }, [load]);
 
-  if (loading) return <PageLoader />;
+  if (loading) return <DashboardSkeleton variant="customer" />;
 
   if (error) {
     return <ErrorState title="Could not load dashboard" message={error} onRetry={() => void load()} />;

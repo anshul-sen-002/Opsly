@@ -19,7 +19,8 @@ import org.springframework.web.bind.annotation.*;
 /**
  * Admin controller for staff account management.
  * Most endpoints require ADMIN role.
- * Staff update can be done by both ADMIN and MANAGER (with restrictions).
+ * Staff update and status change can be done by both ADMIN and MANAGER
+ * (MANAGER restricted to TECHNICIAN targets — enforced in AdminService).
  */
 @RestController
 @RequestMapping("/api/admin/staff")
@@ -62,16 +63,28 @@ public class AdminController {
         return ResponseEntity.ok(ApiResponse.success("Staff updated", adminService.updateStaff(id, request, callerRole)));
     }
 
+    /**
+     * Activate a staff account. ADMIN: any staff account;
+     * MANAGER: TECHNICIAN targets only (enforced in the service).
+     */
     @PutMapping("/{id}/activate")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<StaffResponse>> activateStaff(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Staff activated", adminService.activateStaff(id)));
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<StaffResponse>> activateStaff(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User caller) {
+        return ResponseEntity.ok(ApiResponse.success("Staff activated", adminService.activateStaff(id, caller.getRole())));
     }
 
+    /**
+     * Deactivate a staff account. ADMIN: any staff account;
+     * MANAGER: TECHNICIAN targets only (enforced in the service).
+     */
     @PutMapping("/{id}/deactivate")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<StaffResponse>> deactivateStaff(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Staff deactivated", adminService.deactivateStaff(id)));
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<ApiResponse<StaffResponse>> deactivateStaff(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User caller) {
+        return ResponseEntity.ok(ApiResponse.success("Staff deactivated", adminService.deactivateStaff(id, caller.getRole())));
     }
 
     // Soft delete — the account can be restored later

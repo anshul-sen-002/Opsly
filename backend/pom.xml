@@ -74,6 +74,13 @@
             <groupId>com.cloudinary</groupId>
             <artifactId>cloudinary-http44</artifactId>
             <version>1.39.0</version>
+            <exclusions>
+                <!-- spring-jcl provides the org.apache.commons.logging API; keep the real jar off the classpath -->
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.opensearch.client</groupId>
@@ -84,6 +91,13 @@
             <groupId>org.opensearch.client</groupId>
             <artifactId>opensearch-rest-client</artifactId>
             <version>2.6.0</version>
+            <exclusions>
+                <!-- spring-jcl provides the org.apache.commons.logging API; keep the real jar off the classpath -->
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

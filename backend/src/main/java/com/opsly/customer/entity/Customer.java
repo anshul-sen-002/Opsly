@@ -4,7 +4,7 @@ import com.opsly.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Customer represents the business/person receiving services.
@@ -52,22 +52,29 @@ public class Customer {
     @Builder.Default
     private boolean deleted = false;
 
-    private LocalDateTime deletedAt;
+    private Instant deletedAt;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
+    /**
+     * Marker: did {@code deleteCustomer} flip the linked login from ACTIVE to
+     * INACTIVE? Restore only re-activates when this is true — a login that was
+     * already INACTIVE before the delete stays INACTIVE after restore.
+     */
     @Column(nullable = false)
-    private LocalDateTime updatedAt;
+    @Builder.Default
+    private boolean loginDisabledByDelete = false;
+    @Column(nullable = false, updatable = false, columnDefinition = "timestamp with time zone")
+    private Instant createdAt;
+    @Column(nullable = false, columnDefinition = "timestamp with time zone")
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = Instant.now();
     }
 }

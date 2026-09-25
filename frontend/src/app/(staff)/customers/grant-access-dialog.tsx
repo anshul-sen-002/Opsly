@@ -14,6 +14,13 @@ import type { Customer } from "@/types";
  * Creates a login account for a staff-created customer (user_id = null) via
  * POST /api/customers/{id}/grant-access. Remount with a `key` per customer so
  * the form resets for each target.
+ *
+ * The email field is DISABLED and locked to the customer's contact email, so
+ * the login account (`users.email`) is always created with the exact email
+ * already on the customer record — no divergence between contact and login.
+ * Email is required on customer records, so the field is always locked; the
+ * editable fallback only covers legacy rows created before email became
+ * mandatory.
  */
 export function GrantAccessDialog({
   customer,
@@ -25,7 +32,14 @@ export function GrantAccessDialog({
   onGranted: (customer: Customer) => void;
 }) {
   const toast = useToast();
-  const [email, setEmail] = useState(customer.email ?? "");
+  // The login email is locked to the customer's contact email so the same value
+  // ends up in both `customers.email` and `users.email` — the field is disabled
+  // and the submit always sends `lockedEmail`. Only when the customer record has
+  // no contact email at all does the field stay editable (otherwise grant-access
+  // could never succeed, the API requires a non-blank email).
+  const lockedEmail = (customer.email ?? "").trim();
+  const emailLocked = lockedEmail.length > 0;
+  const [email, setEmail] = useState(lockedEmail);
   const [password, setPassword] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -34,7 +48,8 @@ export function GrantAccessDialog({
     event.preventDefault();
     setFieldError(null);
 
-    const trimmedEmail = email.trim();
+    // Locked field: always the customer's contact email, never typed input
+    const trimmedEmail = emailLocked ? lockedEmail : email.trim();
     if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
       setFieldError("Enter a valid email address.");
       return;
@@ -50,8 +65,9 @@ export function GrantAccessDialog({
         email: trimmedEmail,
         password,
       });
-      toast.success("Portal access granted", `${updated.name} can now sign in at /customer/login.`);
+      // Close FIRST so the success toast renders after the modal is gone.
       onGranted(updated);
+      toast.success("Portal access granted", `${updated.name} can now sign in at /customer/login.`);
     } catch (err) {
       toast.error(
         "Could not grant access",
@@ -82,8 +98,9 @@ export function GrantAccessDialog({
       </div>
 
       <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-        This customer was created by staff and has no login. Set an email and password — they will
-        then be able to sign in from the customer portal.
+        {emailLocked
+          ? `This customer will sign in with their contact email (${lockedEmail}) — the login email is locked so it always matches the customer record. Set a password below.`
+          : "This customer has no contact email on their record. Enter the login email they will use, plus a password."}
       </p>
 
       {fieldError && (
@@ -98,8 +115,15 @@ export function GrantAccessDialog({
           type="email"
           autoComplete="off"
           placeholder="customer@example.com"
-          value={email}
+          value={emailLocked ? lockedEmail : email}
           onChange={(event) => setEmail(event.target.value)}
+          disabled={emailLocked}
+          readOnly={emailLocked}
+          hint={
+            emailLocked
+              ? "Locked to the customer's contact email — it cannot be changed here."
+              : "No contact email on this customer — type the login email."
+          }
         />
         <PasswordInput
           label="Password"
