@@ -7,9 +7,10 @@ import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import type { DashboardSummary } from "@/types";
 
 /**
- * Both dashboards must show a visual skeleton placeholder while their initial
- * data request is in flight, and must swap it for real content once the data
- * arrives.
+ * Both dashboards must show a visual skeleton placeholder for their
+ * data-driven sections while the initial data request is in flight, swap it
+ * for real content once the data arrives, and keep the static shell (header,
+ * hero, quick actions / CTA) visible the whole time.
  */
 
 const mocks = vi.hoisted(() => ({
@@ -91,6 +92,30 @@ describe("Staff dashboard loading state", () => {
     expect(screen.getByText("Jobs Overview")).toBeTruthy();
   });
 
+  it("keeps the static shell visible while the summary is still loading", async () => {
+    let resolveSummary: (value: typeof summary) => void = () => {};
+    mocks.summary.mockReturnValue(
+      new Promise<typeof summary>((resolve) => {
+        resolveSummary = resolve;
+      })
+    );
+
+    const { default: Page } = await import("@/app/(staff)/dashboard/page");
+    render(<Page />);
+
+    // Header, hero and quick actions are static — they must never hide behind
+    // the loader; only the API-backed sections wait for data.
+    expect(screen.getByTestId("dashboard-skeleton")).toBeTruthy();
+    expect(screen.getByText("Dashboard")).toBeTruthy();
+    expect(screen.getByText("Welcome back")).toBeTruthy();
+    expect(screen.getByText("Browse customers")).toBeTruthy();
+    expect(screen.queryByText("Jobs Overview")).toBeNull();
+
+    resolveSummary(summary);
+    await waitFor(() => expect(screen.queryByTestId("dashboard-skeleton")).toBeNull());
+    expect(screen.getByText("Jobs Overview")).toBeTruthy();
+  });
+
   it("keeps existing content visible and flags 'Updating' when the range is switched", async () => {
     mocks.summary.mockResolvedValue(summary);
     const { default: Page } = await import("@/app/(staff)/dashboard/page");
@@ -126,6 +151,19 @@ describe("Customer dashboard loading state", () => {
 
     resolveJobs({ content: [] });
     await waitFor(() => expect(screen.queryByTestId("dashboard-skeleton")).toBeNull());
+    expect(screen.getByText("Raise a new service request")).toBeTruthy();
+  });
+
+  it("keeps the static heading and CTA visible while sections are loading", async () => {
+    mocks.myRequests.mockReturnValue(new Promise(() => {}));
+    mocks.myInvoices.mockResolvedValue({ content: [] });
+
+    const { default: Page } = await import("@/app/customer/dashboard/page");
+    render(<Page />);
+
+    // Heading and CTA are static — only stat cards and panels wait for data.
+    expect(screen.getByTestId("dashboard-skeleton")).toBeTruthy();
+    expect(screen.getByText("Welcome back")).toBeTruthy();
     expect(screen.getByText("Raise a new service request")).toBeTruthy();
   });
 });

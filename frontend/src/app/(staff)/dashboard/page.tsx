@@ -94,10 +94,6 @@ export default function DashboardPage() {
   const totalJobs = summary?.stats.find((s) => s.key === "total_jobs")?.value ?? 0;
   const revenue = summary?.stats.find((s) => s.key === "monthly_revenue")?.value ?? 0;
 
-  // First paint has no data yet — show the full skeleton placeholder so the
-  // page structure is visible while the summary request is in flight.
-  if (loading && !summary) return <DashboardSkeleton />;
-
   return (
     <div className="space-y-6">
       <PageHeader icon={LayoutDashboard} title="Dashboard" subtitle="Overview of your service operations" />
@@ -115,9 +111,15 @@ export default function DashboardPage() {
             </p>
             <h2 className="mt-3 text-2xl font-bold sm:text-3xl">Welcome back</h2>
             <p className="mt-2 text-sm leading-6 text-indigo-100">
-              Team is tracking <span className="font-semibold text-white">{Math.round(totalJobs)} jobs</span>{" "}
-              with <span className="font-semibold text-white">{formatCurrency(revenue)}</span> collected this
-              month.
+              Team is tracking{" "}
+              <span className="font-semibold text-white">
+                {summary ? `${Math.round(totalJobs)} jobs` : "—"}
+              </span>{" "}
+              with{" "}
+              <span className="font-semibold text-white">
+                {summary ? formatCurrency(revenue) : "—"}
+              </span>{" "}
+              collected this month.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -152,7 +154,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {error || !summary ? (
+      {/* API-backed sections sit behind the skeleton until the first summary lands */}
+      {loading && !summary ? (
+        <DashboardSkeleton />
+      ) : error || !summary ? (
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <ErrorState title="Dashboard unavailable" message={error ?? undefined} onRetry={() => void load(days)} />
         </div>
@@ -173,27 +178,28 @@ export default function DashboardPage() {
             </div>
             <TopCustomers items={summary.topCustomers} />
           </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {QUICK_ACTIONS.map((action) => (
-              <Link
-                key={action.href}
-                href={action.href}
-                className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40"
-              >
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-                  <action.icon className="size-5" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-slate-900 dark:text-white">{action.label}</span>
-                  <span className="mt-0.5 block truncate text-xs text-slate-500">{action.description}</span>
-                </span>
-                <ArrowRight className="ml-auto size-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-indigo-600" />
-              </Link>
-            ))}
-          </div>
         </>
       )}
+
+      {/* Quick actions are pure static links — rendered immediately, never behind a loader */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {QUICK_ACTIONS.map((action) => (
+          <Link
+            key={action.href}
+            href={action.href}
+            className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              <action.icon className="size-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-slate-900 dark:text-white">{action.label}</span>
+              <span className="mt-0.5 block truncate text-xs text-slate-500">{action.description}</span>
+            </span>
+            <ArrowRight className="ml-auto size-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-indigo-600" />
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

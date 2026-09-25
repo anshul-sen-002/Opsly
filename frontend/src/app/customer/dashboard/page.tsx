@@ -83,12 +83,6 @@ function CustomerDashboardContent() {
     void load();
   }, [load]);
 
-  if (loading) return <DashboardSkeleton variant="customer" />;
-
-  if (error) {
-    return <ErrorState title="Could not load dashboard" message={error} onRetry={() => void load()} />;
-  }
-
   const inProgress = jobs.filter((job) => job.status === "IN_PROGRESS" || job.status === "ASSIGNED").length;
   const completed = jobs.filter((job) => job.status === "COMPLETED" || job.status === "CLOSED").length;
   const outstanding = invoices
@@ -98,31 +92,47 @@ function CustomerDashboardContent() {
   const recentJobs = jobs.slice(0, 5);
   const recentInvoices = invoices.slice(0, 5);
 
+  // Static shell — rendered immediately, never gated behind a data fetch.
+  const heading = (
+    <div>
+      <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome back</h1>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Track your service requests and invoices in one place.
+      </p>
+    </div>
+  );
+
+  const cta = (
+    <Link
+      href="/customer/requests/new"
+      className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40"
+    >
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+        <ClipboardList className="size-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-slate-900 dark:text-white">Raise a new service request</span>
+        <span className="mt-0.5 block truncate text-xs text-slate-500">Describe the work and schedule a visit</span>
+      </span>
+      <ArrowRight className="ml-auto size-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-indigo-600" />
+    </Link>
+  );
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Welcome back</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Track your service requests and invoices in one place.
-        </p>
-      </div>
+      {heading}
+      {cta}
 
+      {/* Data-backed sections — skeleton on first load, error state with retry on failure */}
+      {loading ? (
+        <DashboardSkeleton variant="customer" />
+      ) : error ? (
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <ErrorState title="Could not load dashboard" message={error} onRetry={() => void load()} />
+        </div>
+      ) : (
+        <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* CTA Card - spans full width above stat cards */}
-        <Link
-          href="/customer/requests/new"
-          className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-indigo-300 hover:shadow dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/40 sm:col-span-4"
-        >
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-            <ClipboardList className="size-5" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-sm font-semibold text-slate-900 dark:text-white">Raise a new service request</span>
-            <span className="mt-0.5 block truncate text-xs text-slate-500">Describe the work and schedule a visit</span>
-          </span>
-          <ArrowRight className="ml-auto size-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-indigo-600" />
-        </Link>
-
         <StatCard
           icon={ClipboardList}
           label="Total Requests"
@@ -236,6 +246,8 @@ function CustomerDashboardContent() {
           </div>
         </section>
       </div>
+        </>
+      )}
     </div>
   );
 }

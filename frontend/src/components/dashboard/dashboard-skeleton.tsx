@@ -21,33 +21,10 @@ function Panel({ className = "", children }: { className?: string; children: Rea
   );
 }
 
-/** Staff layout: page header, hero, 5 metric cards, chart + donut, activity + top, quick actions. */
+/** Staff data sections: 5 metric cards, chart + donut, activity + top customers. */
 function StaffSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3.5">
-        <Bar className="size-12 shrink-0 rounded-xl" />
-        <div className="space-y-2">
-          <Bar className="h-6 w-32" />
-          <Bar className="h-4 w-56" />
-        </div>
-      </div>
-
-      <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="w-full max-w-xl space-y-3">
-            <Bar className="h-6 w-32 bg-white/25" />
-            <Bar className="h-8 w-48 bg-white/30" />
-            <Bar className="h-4 w-full bg-white/20" />
-          </div>
-          <div className="flex items-center gap-1 rounded-xl bg-white/10 p-1">
-            {[0, 1, 2].map((i) => (
-              <Bar key={i} className="h-7 w-11 rounded-lg bg-white/25" />
-            ))}
-          </div>
-        </div>
-      </div>
-
+    <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
@@ -119,42 +96,15 @@ function StaffSkeleton() {
           </div>
         </Panel>
       </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-          >
-            <Bar className="size-11 shrink-0 rounded-xl" />
-            <div className="flex-1 space-y-2">
-              <Bar className="h-4 w-32" />
-              <Bar className="h-3 w-40" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </>
   );
 }
 
-/** Customer layout: heading, CTA + 4 stat cards, two recent panels. */
+/** Customer data sections: 4 stat cards, two recent panels. */
 function CustomerSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <Bar className="h-6 w-40" />
-        <Bar className="h-4 w-72" />
-      </div>
-
+    <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:col-span-4 dark:border-slate-800 dark:bg-slate-900">
-          <Bar className="size-11 shrink-0 rounded-xl" />
-          <div className="flex-1 space-y-2">
-            <Bar className="h-4 w-48" />
-            <Bar className="h-3 w-64" />
-          </div>
-        </div>
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
@@ -193,14 +143,16 @@ function CustomerSkeleton() {
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }
 
 /**
- * Visual loading placeholder for both dashboards. Mirrors the real page
- * structure so the layout doesn't jump when the data arrives, and announces
- * itself to screen readers while the summary request is in flight.
+ * Visual loading placeholder for the data-driven sections of both dashboards.
+ * The static shell (page header, hero, quick actions / CTA) is rendered by the
+ * pages immediately — only API-backed panels wait behind this skeleton. It
+ * mirrors their layout so the page doesn't jump when data arrives, and
+ * announces itself to screen readers while the request is in flight.
  */
 export function DashboardSkeleton({ variant = "staff" }: { variant?: "staff" | "customer" }) {
   return (
@@ -214,7 +166,10 @@ export function DashboardSkeleton({ variant = "staff" }: { variant?: "staff" | "
       <span className="sr-only">
         {variant === "staff" ? "Loading dashboard…" : "Loading your dashboard…"}
       </span>
-      {variant === "customer" ? <CustomerSkeleton /> : <StaffSkeleton />}
+      {/* Inner wrapper so space-y never lands on the sr-only announce span */}
+      <div className="space-y-6">
+        {variant === "customer" ? <CustomerSkeleton /> : <StaffSkeleton />}
+      </div>
     </div>
   );
 }
