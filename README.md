@@ -125,4 +125,4 @@ The AI does **not** directly access the database. Requests go through the Spring
 
 ---
 
-Built for **Bharat Builds Hackathon — First Commit** 🚀
+Built for **Bharat Builds Hackathon — First Commit** 
