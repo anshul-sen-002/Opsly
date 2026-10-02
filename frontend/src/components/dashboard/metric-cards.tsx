@@ -1,4 +1,4 @@
-import { Banknote, Clock, DollarSign, ListChecks, Users, Wallet } from "lucide-react";
+import { Clock, DollarSign, ListChecks, Users, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { DashboardStat } from "@/types";
@@ -12,7 +12,7 @@ const ICONS: Record<string, { icon: LucideIcon; iconClass: string }> = {
 };
 
 function displayValue(stat: DashboardStat): string {
-  if (stat.key === "monthly_revenue" || stat.key === "total_collected") return formatCurrency(stat.value);
+  if (stat.key === "monthly_revenue") return formatCurrency(stat.value);
   return stat.value % 1 === 0 ? String(Math.round(stat.value)) : String(stat.value);
 }
 

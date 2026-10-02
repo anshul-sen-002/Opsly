@@ -42,7 +42,6 @@ const summary: DashboardSummary = {
   stats: [
     { key: "total_jobs", label: "Total jobs", value: 12, delta: "+5", trend: "UP", sparkline: [1, 3, 2, 6] },
     { key: "monthly_revenue", label: "Revenue", value: 4200, delta: "+0", trend: "FLAT", sparkline: [0, 0, 0, 0] },
-  { key: "total_collected", label: "Total Collected", value: 2620, delta: "No revenue this month", trend: "FLAT", sparkline: [0, 0] },
   ],
   overview: { labels: ["Mon"], completed: [1], inProgress: [1], pending: [0] },
   statusCounts: [{ status: "COMPLETED", count: 5 }],
@@ -115,12 +114,12 @@ describe("Staff dashboard loading state", () => {
     resolveSummary(summary);
     await waitFor(() => expect(screen.queryByTestId("dashboard-skeleton")).toBeNull());
     expect(screen.getByText("Jobs Overview")).toBeTruthy();
-    // Hero headline reads the lifetime Total Collected stat (value lives in spans).
+    // Hero headline reads the total jobs stat (value lives in spans).
     expect(
       screen.getByText(
         (_, element) =>
           element?.tagName === "P" &&
-          (element.textContent ?? "").includes("₹2,620 collected so far")
+          (element.textContent ?? "").includes("12 jobs")
       )
     ).toBeTruthy();
   });

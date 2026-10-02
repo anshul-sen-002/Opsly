@@ -31,41 +31,18 @@ class DashboardServiceTest {
 
     /**
      * Payments recorded outside the current calendar month make the Monthly
-     * Revenue card read zero — the all-time "Total Collected" stat must still
-     * report the lifetime sum so the dashboard never hides collected money.
+     * Revenue card read zero — the card must keep its existing key so the
+     * dashboard summary keeps rendering.
      */
     @Test
-    void summaryReportsAllTimeTotalCollectedEvenWhenThisMonthHasNoPayments() {
+    void summaryReportsZeroMonthlyRevenueWhenThisMonthHasNoPayments() {
         when(paymentRepository.sumAmountByStatusAndPaidAtBetween(eq(PaymentStatus.SUCCESS), any(), any()))
                 .thenReturn(BigDecimal.ZERO);
-        when(paymentRepository.sumAmountByStatus(PaymentStatus.SUCCESS))
-                .thenReturn(new BigDecimal("2620.00"));
 
         DashboardSummaryResponse summary = dashboardService.getSummary(7);
 
-        Stat totalCollected = stat(summary, "total_collected");
-        assertEquals(2620.0, totalCollected.getValue());
-        assertEquals("No revenue this month", totalCollected.getDelta());
-        assertEquals("FLAT", totalCollected.getTrend());
-
-        // Regression: the monthly card keeps its existing key and reads 0 here.
         Stat monthlyRevenue = stat(summary, "monthly_revenue");
         assertEquals(0.0, monthlyRevenue.getValue());
-    }
-
-    @Test
-    void summaryReportsNoPaymentsYetWhenThereIsNothingCollected() {
-        when(paymentRepository.sumAmountByStatusAndPaidAtBetween(eq(PaymentStatus.SUCCESS), any(), any()))
-                .thenReturn(BigDecimal.ZERO);
-        when(paymentRepository.sumAmountByStatus(PaymentStatus.SUCCESS))
-                .thenReturn(BigDecimal.ZERO);
-
-        DashboardSummaryResponse summary = dashboardService.getSummary(7);
-
-        Stat totalCollected = stat(summary, "total_collected");
-        assertEquals(0.0, totalCollected.getValue());
-        assertEquals("No payments yet", totalCollected.getDelta());
-        assertEquals("FLAT", totalCollected.getTrend());
     }
 
     private Stat stat(DashboardSummaryResponse summary, String key) {

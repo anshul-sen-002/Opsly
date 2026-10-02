@@ -19,7 +19,6 @@ import { TopCustomers } from "@/components/dashboard/top-customers";
 import { PageHeader } from "@/components/page-header";
 import { ErrorState } from "@/components/ui/states";
 import { dashboardApi } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 import type { DashboardSummary } from "@/types";
@@ -92,7 +91,6 @@ export default function DashboardPage() {
   }, [days, load]);
 
   const totalJobs = summary?.stats.find((s) => s.key === "total_jobs")?.value ?? 0;
-  const totalCollected = summary?.stats.find((s) => s.key === "total_collected")?.value ?? 0;
 
   return (
     <div className="space-y-6">
@@ -114,12 +112,7 @@ export default function DashboardPage() {
               Team is tracking{" "}
               <span className="font-semibold text-white">
                 {summary ? `${Math.round(totalJobs)} jobs` : "—"}
-              </span>{" "}
-              with{" "}
-              <span className="font-semibold text-white">
-                {summary ? formatCurrency(totalCollected) : "—"}
-              </span>{" "}
-              collected so far.
+              </span>.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
