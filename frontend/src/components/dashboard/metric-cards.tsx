@@ -9,7 +9,6 @@ const ICONS: Record<string, { icon: LucideIcon; iconClass: string }> = {
   pending_assignments: { icon: Clock, iconClass: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" },
   customers: { icon: Users, iconClass: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" },
   monthly_revenue: { icon: DollarSign, iconClass: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" },
-  total_collected: { icon: Banknote, iconClass: "bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400" },
 };
 
 function displayValue(stat: DashboardStat): string {
