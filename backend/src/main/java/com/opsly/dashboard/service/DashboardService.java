@@ -64,6 +64,7 @@ public class DashboardService {
         long totalCustomers = customerRepository.countByDeletedFalse();
         BigDecimal revenueThisMonth = paymentRepository.sumAmountByStatusAndPaidAtBetween(PaymentStatus.SUCCESS, monthStart, monthEnd);
         BigDecimal revenueLastMonth = paymentRepository.sumAmountByStatusAndPaidAtBetween(PaymentStatus.SUCCESS, lastMonthStart, monthStart);
+        BigDecimal totalCollected = paymentRepository.sumAmountByStatus(PaymentStatus.SUCCESS);
         Map<LocalDate, EnumMap<JobStatus, Long>> perDay = emptyDayMap(today, days);
         for (Job job : windowJobs) {
             if (job.getCreatedAt() == null) {
@@ -109,7 +110,8 @@ public class DashboardService {
                 stat("active_jobs", "Active Jobs", activeJobs, inProgress + " in progress", activeJobs > 0, activeSpark),
                 stat("pending_assignments", "Pending Assignments", pendingCount(windowJobs), signed(newJobsToday) + " new today", newJobsToday > 0, pendingSpark),
                 stat("customers", "Customers", totalCustomers, signed(newCustomersThisMonth) + " this month", newCustomersThisMonth > 0, customerSpark),
-                stat("monthly_revenue", "Monthly Revenue", revenueThisMonth.doubleValue(), revenueDelta(revenueThisMonth, revenueLastMonth), revenueTrend(revenueThisMonth, revenueLastMonth), revenueSpark));
+                stat("monthly_revenue", "Monthly Revenue", revenueThisMonth.doubleValue(), revenueDelta(revenueThisMonth, revenueLastMonth), revenueTrend(revenueThisMonth, revenueLastMonth), revenueSpark),
+                stat("total_collected", "Total Collected", totalCollected.doubleValue(), totalCollectedDelta(totalCollected, revenueThisMonth), revenueThisMonth.signum() > 0 ? Boolean.TRUE : null, revenueSpark));
         List<StatusCount> statusCounts = new ArrayList<>();
         for (JobRepository.StatusCountRow row : jobRepository.countGroupedByStatus()) {
             statusCounts.add(StatusCount.builder().status(row.getStatus().name()).count(row.getCount()).build());
@@ -192,6 +194,20 @@ public class DashboardService {
             return current != null && current.compareTo(BigDecimal.ZERO) > 0;
         }
         return current.compareTo(previous) >= 0;
+    }
+
+    /**
+     * Delta line for the all-time "Total Collected" card — highlights how much of
+     * the lifetime total actually arrived during the current calendar month.
+     */
+    private String totalCollectedDelta(BigDecimal totalCollected, BigDecimal thisMonth) {
+        if (thisMonth != null && thisMonth.signum() > 0) {
+            return signed(thisMonth.longValue()) + " this month";
+        }
+        if (totalCollected != null && totalCollected.signum() > 0) {
+            return "No revenue this month";
+        }
+        return "No payments yet";
     }
 
     private List<Double> tailAsDoubles(List<Long> series, int size) {

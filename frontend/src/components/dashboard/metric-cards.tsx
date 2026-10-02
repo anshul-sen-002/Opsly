@@ -1,4 +1,4 @@
-import { Clock, DollarSign, ListChecks, Users, Wallet } from "lucide-react";
+import { Banknote, Clock, DollarSign, ListChecks, Users, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { DashboardStat } from "@/types";
@@ -9,10 +9,11 @@ const ICONS: Record<string, { icon: LucideIcon; iconClass: string }> = {
   pending_assignments: { icon: Clock, iconClass: "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400" },
   customers: { icon: Users, iconClass: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" },
   monthly_revenue: { icon: DollarSign, iconClass: "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" },
+  total_collected: { icon: Banknote, iconClass: "bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-400" },
 };
 
 function displayValue(stat: DashboardStat): string {
-  if (stat.key === "monthly_revenue") return formatCurrency(stat.value);
+  if (stat.key === "monthly_revenue" || stat.key === "total_collected") return formatCurrency(stat.value);
   return stat.value % 1 === 0 ? String(Math.round(stat.value)) : String(stat.value);
 }
 
@@ -37,7 +38,7 @@ function Sparkline({ points, positive }: { points: number[]; positive: boolean }
 
 export function MetricCards({ stats }: { stats: DashboardStat[] }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
       {stats.map((stat) => {
         const meta = ICONS[stat.key] ?? {
           icon: ListChecks,

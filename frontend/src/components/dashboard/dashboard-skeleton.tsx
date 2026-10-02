@@ -21,12 +21,12 @@ function Panel({ className = "", children }: { className?: string; children: Rea
   );
 }
 
-/** Staff data sections: 5 metric cards, chart + donut, activity + top customers. */
+/** Staff data sections: 6 metric cards, chart + donut, activity + top customers. */
 function StaffSkeleton() {
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
             className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"

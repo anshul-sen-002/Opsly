@@ -15,7 +15,7 @@ public class DashboardSummaryResponse {
 
     private final int days;
 
-    /** Ordered stat cards: total_jobs, active_jobs, pending_assignments, customers, monthly_revenue */
+    /** Ordered stat cards: total_jobs, active_jobs, pending_assignments, customers, monthly_revenue, total_collected */
     private final List<Stat> stats;
 
     /** Jobs-created-per-day series for the overview chart */

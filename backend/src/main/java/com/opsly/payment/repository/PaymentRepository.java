@@ -26,6 +26,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     // ---- Dashboard aggregations ----
 
+    /** All-time sum of payments in the given status — dashboard "Total Collected" card */
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.status = :status")
+    BigDecimal sumAmountByStatus(@Param("status") PaymentStatus status);
+
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p " +
            "WHERE p.status = :status AND p.paidAt >= :since AND p.paidAt < :until")
     BigDecimal sumAmountByStatusAndPaidAtBetween(
