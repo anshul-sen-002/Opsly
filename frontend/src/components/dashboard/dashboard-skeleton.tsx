@@ -25,7 +25,7 @@ function Panel({ className = "", children }: { className?: string; children: Rea
 function StaffSkeleton() {
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}

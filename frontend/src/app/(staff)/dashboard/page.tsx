@@ -92,7 +92,7 @@ export default function DashboardPage() {
   }, [days, load]);
 
   const totalJobs = summary?.stats.find((s) => s.key === "total_jobs")?.value ?? 0;
-  const revenue = summary?.stats.find((s) => s.key === "monthly_revenue")?.value ?? 0;
+  const totalCollected = summary?.stats.find((s) => s.key === "total_collected")?.value ?? 0;
 
   return (
     <div className="space-y-6">
@@ -117,9 +117,9 @@ export default function DashboardPage() {
               </span>{" "}
               with{" "}
               <span className="font-semibold text-white">
-                {summary ? formatCurrency(revenue) : "—"}
+                {summary ? formatCurrency(totalCollected) : "—"}
               </span>{" "}
-              collected this month.
+              collected so far.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
